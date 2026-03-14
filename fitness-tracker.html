@@ -1,0 +1,1722 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>FitTrack</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #12121a;
+    --surface2: #1a1a26;
+    --surface3: #222233;
+    --border: #2a2a40;
+    --accent: #6ee7f7;
+    --accent2: #a78bfa;
+    --accent3: #f472b6;
+    --accent4: #34d399;
+    --text: #e8e8f0;
+    --text2: #9090b0;
+    --text3: #5a5a7a;
+    --danger: #f87171;
+    --warn: #fbbf24;
+    --r: 12px;
+    --r2: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; min-height: 100vh; overflow-x: hidden; }
+  #root { max-width: 430px; margin: 0 auto; min-height: 100vh; display: flex; flex-direction: column; position: relative; }
+
+  /* TYPOGRAPHY */
+  .mono { font-family: 'Space Mono', monospace; }
+  h1 { font-size: 1.6rem; font-weight: 700; letter-spacing: -0.03em; }
+  h2 { font-size: 1.2rem; font-weight: 600; }
+  h3 { font-size: 1rem; font-weight: 600; }
+
+  /* LAYOUT */
+  .screen { flex: 1; display: flex; flex-direction: column; padding-bottom: 80px; min-height: 100vh; }
+  .topbar { padding: 20px 16px 12px; display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 10; background: var(--bg); border-bottom: 1px solid var(--border); }
+  .topbar-title { flex: 1; }
+  .content { padding: 16px; flex: 1; display: flex; flex-direction: column; gap: 16px; }
+
+  /* BOTTOM NAV */
+  .bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 430px; background: var(--surface); border-top: 1px solid var(--border); display: flex; z-index: 100; padding: 8px 0 max(8px, env(safe-area-inset-bottom)); }
+  .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 4px; cursor: pointer; transition: all 0.2s; }
+  .nav-item .nav-icon { font-size: 1.3rem; line-height: 1; }
+  .nav-item .nav-label { font-size: 0.65rem; font-weight: 500; color: var(--text3); letter-spacing: 0.05em; text-transform: uppercase; }
+  .nav-item.active .nav-icon { filter: drop-shadow(0 0 8px var(--accent)); }
+  .nav-item.active .nav-label { color: var(--accent); }
+
+  /* CARDS */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); padding: 16px; }
+  .card-sm { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r2); padding: 12px; }
+  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+
+  /* BUTTONS */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 10px 16px; border-radius: var(--r2); font-family: inherit; font-size: 0.875rem; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; white-space: nowrap; }
+  .btn-primary { background: var(--accent); color: #0a0a0f; }
+  .btn-primary:active { transform: scale(0.97); opacity: 0.9; }
+  .btn-ghost { background: transparent; color: var(--text2); border: 1px solid var(--border); }
+  .btn-ghost:active { background: var(--surface2); }
+  .btn-danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); }
+  .btn-icon { padding: 8px; border-radius: var(--r2); background: var(--surface2); color: var(--text2); border: 1px solid var(--border); cursor: pointer; font-size: 1rem; line-height: 1; transition: all 0.15s; }
+  .btn-icon:active { background: var(--surface3); }
+  .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+  .btn-full { width: 100%; }
+  .btn-accent2 { background: var(--accent2); color: #fff; }
+
+  /* INPUTS */
+  .input { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r2); padding: 10px 12px; color: var(--text); font-family: inherit; font-size: 0.9rem; width: 100%; outline: none; transition: border-color 0.2s; }
+  .input:focus { border-color: var(--accent); }
+  .input::placeholder { color: var(--text3); }
+  .input-sm { padding: 7px 10px; font-size: 0.8rem; }
+  .label { font-size: 0.75rem; font-weight: 600; color: var(--text2); margin-bottom: 4px; letter-spacing: 0.05em; text-transform: uppercase; }
+
+  /* CALENDAR */
+  .calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+  .cal-header { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; margin-bottom: 6px; }
+  .cal-day-name { text-align: center; font-size: 0.65rem; color: var(--text3); font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 4px 0; }
+  .cal-day { aspect-ratio: unset; min-height: 44px; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; padding-top: 6px; border-radius: 8px; cursor: pointer; font-size: 0.8rem; font-weight: 500; color: var(--text2); transition: all 0.15s; position: relative; gap: 2px; }
+  .cal-day-num { line-height: 1; }
+  .cal-nutri { display: flex; gap: 2px; margin-top: 2px; margin-bottom: 3px; }
+  .cal-nutri-dot { font-size: 0.5rem; line-height: 1; }
+  .cal-day:hover { background: var(--surface2); }
+  .cal-day.today { color: var(--accent); font-weight: 700; }
+  .cal-day.has-workout::after { content: ''; width: 4px; height: 4px; background: var(--accent4); border-radius: 50%; }
+  .cal-day.selected { background: var(--accent); color: #0a0a0f; font-weight: 700; }
+  .cal-day.selected::after { background: #0a0a0f; }
+  .cal-day.other-month { color: var(--text3); opacity: 0.4; }
+
+  /* BADGES */
+  .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 20px; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+  .badge-accent { background: rgba(110,231,247,0.12); color: var(--accent); border: 1px solid rgba(110,231,247,0.2); }
+  .badge-purple { background: rgba(167,139,250,0.12); color: var(--accent2); border: 1px solid rgba(167,139,250,0.2); }
+  .badge-green { background: rgba(52,211,153,0.12); color: var(--accent4); border: 1px solid rgba(52,211,153,0.2); }
+  .badge-pink { background: rgba(244,114,182,0.12); color: var(--accent3); border: 1px solid rgba(244,114,182,0.2); }
+
+  /* PROGRESS BAR */
+  .progress-bar { height: 6px; background: var(--surface3); border-radius: 3px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+
+  /* STAT GRID */
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat-box { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--r2); padding: 12px; }
+  .stat-value { font-size: 1.4rem; font-weight: 700; font-family: 'Space Mono', monospace; line-height: 1; }
+  .stat-label { font-size: 0.7rem; color: var(--text3); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+
+  /* SET ROWS */
+  .set-row { display: grid; grid-template-columns: 28px 1fr 1fr; gap: 8px; align-items: center; }
+  .set-num { font-size: 0.75rem; font-weight: 700; color: var(--text3); font-family: 'Space Mono', monospace; text-align: center; }
+
+  /* TABS */
+  .tabs { display: flex; gap: 4px; background: var(--surface2); padding: 4px; border-radius: var(--r2); }
+  .tab { flex: 1; padding: 8px; text-align: center; font-size: 0.8rem; font-weight: 600; border-radius: 6px; cursor: pointer; color: var(--text3); transition: all 0.2s; }
+  .tab.active { background: var(--accent); color: #0a0a0f; }
+
+  /* MODAL */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 200; display: flex; align-items: flex-end; backdrop-filter: blur(4px); }
+  .modal { background: var(--surface); border-radius: var(--r) var(--r) 0 0; border: 1px solid var(--border); width: 100%; max-width: 430px; margin: 0 auto; padding: 20px; max-height: 90vh; overflow-y: auto; }
+  .modal-handle { width: 40px; height: 4px; background: var(--border); border-radius: 2px; margin: -8px auto 16px; }
+
+  /* MISC */
+  .divider { height: 1px; background: var(--border); }
+  .row { display: flex; align-items: center; gap: 10px; }
+  .row-between { display: flex; align-items: center; justify-content: space-between; }
+  .gap-2 { gap: 8px; }
+  .gap-3 { gap: 12px; }
+  .col { display: flex; flex-direction: column; gap: 10px; }
+  .text-sm { font-size: 0.85rem; }
+  .text-xs { font-size: 0.75rem; }
+  .text-muted { color: var(--text2); }
+  .text-muted2 { color: var(--text3); }
+  .text-accent { color: var(--accent); }
+  .text-green { color: var(--accent4); }
+  .text-purple { color: var(--accent2); }
+  .text-pink { color: var(--accent3); }
+  .text-warn { color: var(--warn); }
+  .fw-700 { font-weight: 700; }
+  .scroll-x { overflow-x: auto; scrollbar-width: none; }
+  .scroll-x::-webkit-scrollbar { display: none; }
+  .chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--text3); }
+  .empty-icon { font-size: 3rem; margin-bottom: 12px; }
+  .empty-text { font-size: 0.9rem; }
+  canvas { max-width: 100%; }
+  select.input { appearance: none; }
+  .highlight-row { background: rgba(110,231,247,0.06); border: 1px solid rgba(110,231,247,0.15); border-radius: var(--r2); padding: 10px 12px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  
+  /* Animations */
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .fade-in { animation: fadeIn 0.25s ease; }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .slide-up { animation: slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback, useMemo } = React;
+
+// ── SUPABASE ──────────────────────────────────────────────────────────────────
+const SUPA_URL = 'https://cpwuvivasvnvhsjmnqqa.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNwd3V2aXZhc3Zudmhzam1ucXFhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MjY4MjUsImV4cCI6MjA4OTEwMjgyNX0.8_Z2iyEha-k5wfE7LtgkZ76ftvxqJXHvSTcRpV6O_bc';
+const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
+
+// ── STORAGE — escribe en Supabase, usa localStorage como caché offline ─────────
+// Todas las escrituras son upsert; todas las lecturas intentan Supabase primero.
+// Si no hay red, devuelve lo que hay en localStorage.
+
+let _userId = null; // se setea al hacer login
+const setUserId = (id) => { _userId = id; };
+
+const CACHE = {
+  get: (k, def = null) => { try { const v = localStorage.getItem('ft_' + k); return v ? JSON.parse(v) : def; } catch { return def; } },
+  set: (k, v) => { try { localStorage.setItem('ft_' + k, JSON.stringify(v)); } catch {} },
+};
+
+// Mapeo clave → tabla de Supabase
+// Claves con sufijo de fecha: 'workouts_2024-01-15' → tabla workouts, date='2024-01-15'
+// Claves sin fecha: 'routines', 'foods', 'bodyMetrics', 'goals', 'exerciseUnits' → tabla según nombre
+
+const DB = {
+  // Lee: primero intenta Supabase, fallback a caché
+  get: async (k, def = null) => {
+    // Siempre devuelve caché de inmediato mientras carga
+    const cached = CACHE.get(k, def);
+    return cached;
+  },
+
+  // Escribe: guarda en caché y sube a Supabase en background
+  set: (k, v) => {
+    CACHE.set(k, v);
+    if (_userId) DB._push(k, v).catch(() => {}); // fire-and-forget
+  },
+
+  // Sube un valor a Supabase
+  _push: async (k, v) => {
+    if (!_userId) return;
+    const { table, date } = DB._parseKey(k);
+    if (!table) return;
+    const row = { user_id: _userId, data: v, updated_at: new Date().toISOString() };
+    if (date) row.date = date;
+    await supa.from(table).upsert(row, { onConflict: date ? 'user_id,date' : 'user_id' });
+  },
+
+  // Sincroniza TODO desde Supabase al caché local
+  syncDown: async () => {
+    if (!_userId) return;
+    const tables = [
+      { name: 'workouts',     hasDate: true  },
+      { name: 'routines',     hasDate: false },
+      { name: 'nutrition',    hasDate: true  },
+      { name: 'foods',        hasDate: false },
+      { name: 'body_metrics', hasDate: false },
+      { name: 'settings',     hasDate: false },
+    ];
+    for (const { name, hasDate } of tables) {
+      const { data, error } = await supa.from(name).select('*').eq('user_id', _userId);
+      if (error || !data) continue;
+      if (hasDate) {
+        // Reconstruye objeto { date: data } en caché
+        const cacheKey = name === 'body_metrics' ? 'bodyMetrics' : name;
+        const existing = CACHE.get(cacheKey, {});
+        data.forEach(row => { existing[row.date] = row.data; });
+        CACHE.set(cacheKey, existing);
+      } else {
+        const cacheKey = name === 'body_metrics' ? 'bodyMetrics' : name;
+        if (data.length > 0) CACHE.set(cacheKey, data[0].data);
+      }
+    }
+    // También sync settings (goals, exerciseUnits)
+    const { data: settRows } = await supa.from('settings').select('*').eq('user_id', _userId);
+    if (settRows && settRows.length > 0) {
+      const s = settRows[0].data;
+      if (s.goals)         CACHE.set('goals', s.goals);
+      if (s.exerciseUnits) CACHE.set('exerciseUnits', s.exerciseUnits);
+    }
+  },
+
+  // Sube TODO el caché local a Supabase (migración inicial)
+  syncUp: async () => {
+    if (!_userId) return;
+    const keys = ['routines','workouts','nutrition','foods','bodyMetrics','goals','exerciseUnits'];
+    for (const k of keys) {
+      const v = CACHE.get(k);
+      if (v !== null) await DB._push(k, v).catch(() => {});
+    }
+  },
+
+  _parseKey: (k) => {
+    // 'workouts' → tabla workouts, sin date
+    // 'nutrition' → tabla nutrition, sin date (se guarda como objeto {date:data})
+    // 'routines' → tabla routines
+    // 'foods' → tabla foods
+    // 'bodyMetrics' → tabla body_metrics
+    // 'goals' + 'exerciseUnits' → tabla settings (combinados)
+    if (k === 'workouts')      return { table: null }; // workouts se guarda por fecha
+    if (k === 'nutrition')     return { table: null }; // idem
+    if (k === 'routines')      return { table: 'routines' };
+    if (k === 'foods')         return { table: 'foods' };
+    if (k === 'bodyMetrics')   return { table: 'body_metrics' };
+    if (k === 'goals' || k === 'exerciseUnits') {
+      // Combina goals + exerciseUnits en settings
+      const goals         = CACHE.get('goals', {});
+      const exerciseUnits = CACHE.get('exerciseUnits', {});
+      DB._pushSettings({ goals, exerciseUnits }).catch(() => {});
+      return { table: null };
+    }
+    return { table: null };
+  },
+
+  _pushSettings: async (data) => {
+    if (!_userId) return;
+    await supa.from('settings').upsert({ user_id: _userId, data, updated_at: new Date().toISOString() }, { onConflict: 'user_id' });
+  },
+
+  // Guarda un workout específico de un día
+  setWorkoutDay: async (date, data) => {
+    CACHE.set('workouts', { ...CACHE.get('workouts', {}), [date]: data });
+    if (!_userId) return;
+    await supa.from('workouts').upsert({ user_id: _userId, date, data, updated_at: new Date().toISOString() }, { onConflict: 'user_id,date' });
+  },
+
+  // Guarda un día de nutrición
+  setNutritionDay: async (date, data) => {
+    CACHE.set('nutrition', { ...CACHE.get('nutrition', {}), [date]: data });
+    if (!_userId) return;
+    await supa.from('nutrition').upsert({ user_id: _userId, date, data, updated_at: new Date().toISOString() }, { onConflict: 'user_id,date' });
+  },
+};
+
+// ── INITIAL DATA (lee desde caché, que fue populado por syncDown) ─────────────
+const initRoutines = () => CACHE.get('routines', [
+  { id: '1', name: 'Pecho & Tríceps', exercises: ['Press Banca', 'Press Inclinado', 'Aperturas', 'Fondos', 'Extensiones Tríceps'] },
+  { id: '2', name: 'Espalda & Bíceps', exercises: ['Dominadas', 'Remo con Barra', 'Jalón al Pecho', 'Curl con Barra', 'Curl Martillo'] },
+  { id: '3', name: 'Piernas', exercises: ['Sentadilla', 'Prensa', 'Extensiones', 'Femoral', 'Pantorrillas'] },
+]);
+const initWorkouts      = () => CACHE.get('workouts', {});
+const initFoods         = () => CACHE.get('foods', [
+  { id: 'f1', name: 'Arroz cocido',      category: 'carbos',    unit: 'taza',    calories: 206, protein: 4.3,  carbs: 44.5, fat: 0.4 },
+  { id: 'f2', name: 'Pechuga de pollo',  category: 'proteinas', unit: '100g',    calories: 165, protein: 31,   carbs: 0,    fat: 3.6 },
+  { id: 'f3', name: 'Huevo entero',      category: 'proteinas', unit: 'unidad',  calories: 72,  protein: 6.3,  carbs: 0.4,  fat: 5   },
+  { id: 'f4', name: 'Avena',             category: 'carbos',    unit: 'taza',    calories: 303, protein: 10.7, carbs: 54.8, fat: 5.3 },
+  { id: 'f5', name: 'Leche',             category: 'lacteos',   unit: 'taza',    calories: 122, protein: 8.1,  carbs: 11.7, fat: 4.8 },
+]);
+const initNutrition     = () => CACHE.get('nutrition', {});
+const initBodyMetrics   = () => CACHE.get('bodyMetrics', []);
+const initGoals         = () => CACHE.get('goals', { calories: 2500, protein: 180, carbs: 280, fat: 70 });
+const initExerciseUnits = () => CACHE.get('exerciseUnits', {});
+
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+const todayStr = () => new Date().toISOString().split('T')[0];
+const dateStr = (d) => d.toISOString().split('T')[0];
+const fmtDate = (s) => { const d = new Date(s + 'T00:00:00'); return d.toLocaleDateString('es-CL', { weekday: 'short', day: 'numeric', month: 'short' }); };
+const uid = () => Math.random().toString(36).slice(2, 9);
+const DAYS = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+// ── UNIT HELPERS ──────────────────────────────────────────────────────────────
+const LB_TO_KG = 0.453592;
+const lbToKg = (lb) => +(parseFloat(lb) * LB_TO_KG).toFixed(2);
+const kgToLb = (kg) => +(parseFloat(kg) / LB_TO_KG).toFixed(2);
+
+// ── COMPONENTS ────────────────────────────────────────────────────────────────
+
+// Nutrition macro bar
+const MacroBar = ({ label, value, goal, color }) => {
+  const pct = Math.min(100, goal > 0 ? (value / goal * 100) : 0);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div className="row-between">
+        <span className="text-xs text-muted">{label}</span>
+        <span className="text-xs mono" style={{ color }}>{value.toFixed(1)}g / {goal}g</span>
+      </div>
+      <div className="progress-bar">
+        <div className="progress-fill" style={{ width: pct + '%', background: color }} />
+      </div>
+    </div>
+  );
+};
+
+// Chart component
+const LineChartComp = ({ data, label, color, yLabel }) => {
+  const ref = useRef(null);
+  const chartRef = useRef(null);
+  useEffect(() => {
+    if (!ref.current || data.length < 2) return;
+    if (chartRef.current) chartRef.current.destroy();
+    chartRef.current = new Chart(ref.current, {
+      type: 'line',
+      data: {
+        labels: data.map(d => d.label),
+        datasets: [{ label, data: data.map(d => d.value), borderColor: color, backgroundColor: color + '20', tension: 0.4, fill: true, pointBackgroundColor: color, pointRadius: 4, pointHoverRadius: 6 }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => `${ctx.parsed.y} ${yLabel || ''}` } } },
+        scales: {
+          x: { grid: { color: '#2a2a40' }, ticks: { color: '#5a5a7a', font: { size: 10 }, maxTicksLimit: 6 } },
+          y: { grid: { color: '#2a2a40' }, ticks: { color: '#5a5a7a', font: { size: 10 } } }
+        }
+      }
+    });
+    return () => { if (chartRef.current) chartRef.current.destroy(); };
+  }, [data]);
+  if (data.length < 2) return <div className="empty-state"><div className="empty-text">Registra más datos para ver la gráfica</div></div>;
+  return <div style={{ height: 180 }}><canvas ref={ref} /></div>;
+};
+
+// ── MODAL ──────────────────────────────────────────────────────────────────────
+const Modal = ({ open, onClose, title, children }) => {
+  if (!open) return null;
+  return (
+    <div className="modal-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal slide-up">
+        <div className="modal-handle" />
+        {title && <div className="row-between" style={{ marginBottom: 16 }}><h3>{title}</h3><button className="btn-icon" onClick={onClose}>✕</button></div>}
+        {children}
+      </div>
+    </div>
+  );
+};
+
+// ── SCREEN: ENTRENAMIENTO ─────────────────────────────────────────────────────
+const WorkoutScreen = () => {
+  const today = new Date();
+  const [viewDate, setViewDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
+  const [selectedDate, setSelectedDate] = useState(todayStr());
+  const [routines, setRoutines] = useState(initRoutines);
+  const [workouts, setWorkouts] = useState(initWorkouts);
+  const [view, setView] = useState('calendar'); // calendar | day | log | routines | editRoutine
+  const [editRoutine, setEditRoutine] = useState(null);
+  const [activeWorkout, setActiveWorkout] = useState(null);
+  const [newExName, setNewExName] = useState('');
+  const [exerciseUnits, setExerciseUnits] = useState(initExerciseUnits);
+  // Read nutrition + goals for calendar indicators (read-only here)
+  const nutritionData = useMemo(() => initNutrition(), []);
+  const goals = useMemo(() => initGoals(), []);
+
+  // Per-day nutrition status for calendar — null if no data, else { cal: bool|null, prot: bool|null }
+  const getNutriStatus = useCallback((ds) => {
+    const raw = nutritionData[ds];
+    if (!raw) return null;
+    const allItems = [
+      ...FOOD_CATEGORIES.flatMap(c => raw[c.key] || []),
+      ...['desayuno','almuerzo','cena'].flatMap(k => raw[k] || []),
+    ];
+    if (allItems.length === 0) return null;
+    const totalCal  = allItems.reduce((a, i) => a + (i.calories || 0), 0);
+    const totalProt = allItems.reduce((a, i) => a + (i.protein  || 0), 0);
+    return {
+      cal:  goals.calories > 0 ? totalCal  >= goals.calories * 0.9 : null,
+      prot: goals.protein  > 0 ? totalProt >= goals.protein  * 0.9 : null,
+    };
+  }, [nutritionData, goals]);
+
+  const saveRoutines = (r) => { setRoutines(r); DB.set('routines', r); };
+  const saveWorkouts = (w) => {
+    setWorkouts(w);
+    // Persist each day individually to Supabase
+    Object.entries(w).forEach(([date, data]) => DB.setWorkoutDay(date, data));
+  };
+  const saveExerciseUnits = (u) => { setExerciseUnits(u); DB.set('exerciseUnits', u); };
+
+  // Unit helpers scoped to workout screen
+  const getUnit = (ex) => exerciseUnits[ex] || 'kg';
+  const toggleUnit = (ex) => {
+    const next = getUnit(ex) === 'kg' ? 'lb' : 'kg';
+    saveExerciseUnits({ ...exerciseUnits, [ex]: next });
+  };
+  // Convert display value → kg for storage
+  const toKgForStorage = (ex, val) => {
+    const n = parseFloat(val);
+    if (isNaN(n)) return '';
+    return getUnit(ex) === 'lb' ? String(lbToKg(n)) : String(n);
+  };
+  // Convert kg stored → display unit
+  const fromStorageToDisplay = (ex, kgVal) => {
+    const n = parseFloat(kgVal);
+    if (isNaN(n) || kgVal === '') return kgVal;
+    return getUnit(ex) === 'lb' ? String(kgToLb(n)) : String(n);
+  };
+
+  // Calendar helpers — semana empieza en Lunes (getDay: 0=Dom,1=Lun…6=Sáb → offset: Dom=6, resto=getDay-1)
+  const daysInMonth = useMemo(() => {
+    const year = viewDate.getFullYear(), month = viewDate.getMonth();
+    const rawFirst = new Date(year, month, 1).getDay(); // 0=Dom
+    const firstDay = rawFirst === 0 ? 6 : rawFirst - 1; // Lun=0 … Dom=6
+    const days = [];
+    for (let i = 0; i < firstDay; i++) {
+      const d = new Date(year, month, i - firstDay + 1);
+      days.push({ date: d, cur: false });
+    }
+    const total = new Date(year, month + 1, 0).getDate();
+    for (let i = 1; i <= total; i++) days.push({ date: new Date(year, month, i), cur: true });
+    while (days.length % 7 !== 0) {
+      const d = new Date(year, month + 1, days.length - total - firstDay + 1);
+      days.push({ date: d, cur: false });
+    }
+    return days;
+  }, [viewDate]);
+
+  const prevMonth = () => setViewDate(d => new Date(d.getFullYear(), d.getMonth() - 1, 1));
+  const nextMonth = () => setViewDate(d => new Date(d.getFullYear(), d.getMonth() + 1, 1));
+
+  // Get last session data for exercise
+  const getLastSession = (exName) => {
+    const entries = Object.entries(workouts)
+      .filter(([d, w]) => d < selectedDate && w.sets && w.sets[exName])
+      .sort((a, b) => b[0].localeCompare(a[0]));
+    if (!entries.length) return null;
+    return { date: entries[0][0], sets: entries[0][1].sets[exName] };
+  };
+  const getRecord = (exName) => {
+    let best = 0;
+    Object.values(workouts).forEach(w => {
+      if (w.sets && w.sets[exName]) {
+        w.sets[exName].forEach(s => {
+          if (s.trackInGraph === false) return; // skip excluded sets
+          const vol = (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0);
+          if (vol > best) best = vol;
+        });
+      }
+    });
+    return best;
+  };
+
+  // Start/continue workout
+  const startWorkout = (routineId) => {
+    const routine = routines.find(r => r.id === routineId);
+    if (!routine) return;
+    const existing = workouts[selectedDate];
+    const initSets = {};
+    routine.exercises.forEach(ex => {
+      if (existing?.sets?.[ex]) initSets[ex] = existing.sets[ex].map(s => ({ weight: '', reps: '', trackInGraph: true, ...s }));
+      else initSets[ex] = [{ weight: '', reps: '', trackInGraph: true }];
+    });
+    setActiveWorkout({ routineId, routineName: routine.name, exercises: routine.exercises, sets: initSets });
+    setView('log');
+  };
+
+  const addSet = (ex) => {
+    setActiveWorkout(w => ({ ...w, sets: { ...w.sets, [ex]: [...w.sets[ex], { weight: '', reps: '', trackInGraph: true }] } }));
+  };
+  const removeSet = (ex, idx) => {
+    setActiveWorkout(w => ({ ...w, sets: { ...w.sets, [ex]: w.sets[ex].filter((_, i) => i !== idx) } }));
+  };
+  const updateSet = (ex, idx, field, val) => {
+    setActiveWorkout(w => {
+      const sets = [...w.sets[ex]];
+      sets[idx] = { ...sets[idx], [field]: val };
+      return { ...w, sets: { ...w.sets, [ex]: sets } };
+    });
+  };
+  const copyLastSession = (ex) => {
+    const last = getLastSession(ex);
+    if (!last) return;
+    setActiveWorkout(w => ({ ...w, sets: { ...w.sets, [ex]: last.sets.map(s => ({ ...s })) } }));
+  };
+
+  const saveWorkout = () => {
+    // Convert all weights to kg for storage regardless of display unit
+    const normalizedSets = {};
+    Object.entries(activeWorkout.sets).forEach(([ex, sets]) => {
+      normalizedSets[ex] = sets.map(s => ({
+        ...s,
+        weight: toKgForStorage(ex, s.weight),
+      }));
+    });
+    const updated = { ...workouts, [selectedDate]: { routineId: activeWorkout.routineId, routineName: activeWorkout.routineName, sets: normalizedSets, date: selectedDate } };
+    saveWorkouts(updated);
+    setView('day');
+    setActiveWorkout(null);
+  };
+
+  // Routine editor
+  const openNewRoutine = () => {
+    setEditRoutine({ id: uid(), name: '', exercises: [] });
+    setView('editRoutine');
+  };
+  const openEditRoutine = (r) => { setEditRoutine({ ...r, exercises: [...r.exercises] }); setView('editRoutine'); };
+  const saveEditRoutine = () => {
+    if (!editRoutine.name.trim()) return;
+    const exists = routines.find(r => r.id === editRoutine.id);
+    if (exists) saveRoutines(routines.map(r => r.id === editRoutine.id ? editRoutine : r));
+    else saveRoutines([...routines, editRoutine]);
+    setView('routines');
+    setEditRoutine(null);
+  };
+  const deleteRoutine = (id) => { saveRoutines(routines.filter(r => r.id !== id)); };
+
+  const todayKey = todayStr();
+
+  // VIEWS
+  if (view === 'log' && activeWorkout) {
+    return (
+      <div className="screen fade-in">
+        <div className="topbar">
+          <button className="btn-icon" onClick={() => { setView('day'); setActiveWorkout(null); }}>←</button>
+          <div className="topbar-title">
+            <div className="text-xs text-muted">Entrenando</div>
+            <h2>{activeWorkout.routineName}</h2>
+          </div>
+          <button className="btn btn-primary btn-sm" onClick={saveWorkout}>Guardar</button>
+        </div>
+        <div className="content">
+          {activeWorkout.exercises.map(ex => {
+            const last = getLastSession(ex);
+            const record = getRecord(ex);
+            const unit = getUnit(ex);
+            return (
+              <div key={ex} className="card fade-in">
+                <div className="row-between" style={{ marginBottom: 10 }}>
+                  <h3>{ex}</h3>
+                  <div className="row" style={{ gap: 8 }}>
+                    {/* Unit toggle */}
+                    <button
+                      className="btn btn-ghost btn-sm"
+                      style={{ fontFamily: 'Space Mono, monospace', minWidth: 52, color: unit === 'lb' ? 'var(--accent3)' : 'var(--accent)' }}
+                      onClick={() => {
+                        // Convert current input values between units before toggling
+                        setActiveWorkout(w => {
+                          const convertedSets = w.sets[ex].map(s => {
+                            if (s.weight === '' || s.weight === undefined) return s;
+                            const n = parseFloat(s.weight);
+                            if (isNaN(n)) return s;
+                            const converted = unit === 'kg' ? String(kgToLb(n)) : String(lbToKg(n));
+                            return { ...s, weight: converted };
+                          });
+                          return { ...w, sets: { ...w.sets, [ex]: convertedSets } };
+                        });
+                        toggleUnit(ex);
+                      }}
+                      title="Cambiar unidad"
+                    >
+                      {unit === 'kg' ? 'kg' : 'lb'}
+                    </button>
+                    {last && (
+                      <button className="btn btn-ghost btn-sm" onClick={() => copyLastSession(ex)} title="Copiar última sesión">
+                        📋
+                      </button>
+                    )}
+                  </div>
+                </div>
+                {last && (
+                  <div className="highlight-row" style={{ marginBottom: 10, display: 'flex', gap: 12 }}>
+                    <div>
+                      <div className="text-xs text-muted2">Última sesión</div>
+                      <div className="text-xs text-accent mono">
+                        {last.sets.map(s => {
+                          const dispW = unit === 'lb' ? kgToLb(parseFloat(s.weight)||0) : (parseFloat(s.weight)||0);
+                          return `${dispW}${unit}×${s.reps||0}`;
+                        }).join(' ')}
+                      </div>
+                    </div>
+                    {record > 0 && (
+                      <div>
+                        <div className="text-xs text-muted2">Récord (vol.)</div>
+                        <div className="text-xs text-warn mono">
+                          {unit === 'lb' ? `${+(record / LB_TO_KG).toFixed(1)} lb·rep` : `${record} kg·rep`}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                <div style={{ marginBottom: 8 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '28px 1fr 1fr 32px', gap: 8, alignItems: 'center', marginBottom: 4 }}>
+                    <span className="text-xs text-muted2">#</span>
+                    <span className="label">Peso ({unit})</span>
+                    <span className="label">Reps</span>
+                    <span className="label" style={{ fontSize: '0.6rem', textAlign: 'center' }} title="¿Contar en gráficas?">📊</span>
+                  </div>
+                  {activeWorkout.sets[ex].map((set, idx) => (
+                    <div key={idx} style={{ display: 'grid', gridTemplateColumns: '28px 1fr 1fr 32px', gap: 8, alignItems: 'center', marginBottom: 6 }}>
+                      <span className="set-num">{idx + 1}</span>
+                      <input
+                        className="input input-sm"
+                        type="number" inputMode="decimal" placeholder="0"
+                        value={set.weight}
+                        onChange={e => updateSet(ex, idx, 'weight', e.target.value)}
+                        style={{ opacity: set.trackInGraph === false ? 0.5 : 1 }}
+                      />
+                      <div className="row" style={{ gap: 6 }}>
+                        <input
+                          className="input input-sm"
+                          type="number" inputMode="numeric" placeholder="0"
+                          value={set.reps}
+                          onChange={e => updateSet(ex, idx, 'reps', e.target.value)}
+                          style={{ flex: 1, opacity: set.trackInGraph === false ? 0.5 : 1 }}
+                        />
+                        {activeWorkout.sets[ex].length > 1 && (
+                          <button className="btn-icon" style={{ fontSize: '0.7rem', padding: '6px' }} onClick={() => removeSet(ex, idx)}>✕</button>
+                        )}
+                      </div>
+                      {/* Track in graph toggle */}
+                      <button
+                        title={set.trackInGraph === false ? 'Excluido de gráficas — click para incluir' : 'Incluido en gráficas — click para excluir'}
+                        onClick={() => updateSet(ex, idx, 'trackInGraph', set.trackInGraph === false ? true : false)}
+                        style={{
+                          background: 'none', border: '1px solid',
+                          borderColor: set.trackInGraph === false ? 'var(--border)' : 'var(--accent4)',
+                          borderRadius: 6, cursor: 'pointer', width: 32, height: 32,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          fontSize: '0.75rem', color: set.trackInGraph === false ? 'var(--text3)' : 'var(--accent4)',
+                          transition: 'all 0.15s', flexShrink: 0,
+                        }}
+                      >
+                        {set.trackInGraph === false ? '✕' : '✓'}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <button className="btn btn-ghost btn-sm" onClick={() => addSet(ex)}>+ Serie</button>
+              </div>
+            );
+          })}
+          <button className="btn btn-primary btn-full" onClick={saveWorkout}>💾 Guardar entrenamiento</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (view === 'routines') {
+    return (
+      <div className="screen fade-in">
+        <div className="topbar">
+          <button className="btn-icon" onClick={() => setView('calendar')}>←</button>
+          <div className="topbar-title"><h2>Mis Rutinas</h2></div>
+          <button className="btn btn-primary btn-sm" onClick={openNewRoutine}>+ Nueva</button>
+        </div>
+        <div className="content">
+          {routines.length === 0 && <div className="empty-state"><div className="empty-icon">🏋️</div><div className="empty-text">Sin rutinas todavía</div></div>}
+          {routines.map(r => (
+            <div key={r.id} className="card">
+              <div className="row-between" style={{ marginBottom: 8 }}>
+                <div>
+                  <div className="fw-700">{r.name}</div>
+                  <div className="text-xs text-muted2">{r.exercises.length} ejercicios</div>
+                </div>
+                <div className="row" style={{ gap: 8 }}>
+                  <button className="btn btn-ghost btn-sm" onClick={() => openEditRoutine(r)}>✏️</button>
+                  <button className="btn btn-danger btn-sm" onClick={() => { if(confirm('¿Eliminar?')) deleteRoutine(r.id); }}>🗑</button>
+                </div>
+              </div>
+              <div className="chip-row">
+                {r.exercises.map(ex => <span key={ex} className="badge badge-accent">{ex}</span>)}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (view === 'editRoutine' && editRoutine) {
+    return (
+      <div className="screen fade-in">
+        <div className="topbar">
+          <button className="btn-icon" onClick={() => { setView('routines'); setEditRoutine(null); }}>←</button>
+          <div className="topbar-title"><h2>{editRoutine.id && routines.find(r=>r.id===editRoutine.id) ? 'Editar Rutina' : 'Nueva Rutina'}</h2></div>
+          <button className="btn btn-primary btn-sm" onClick={saveEditRoutine}>Guardar</button>
+        </div>
+        <div className="content">
+          <div>
+            <div className="label">Nombre de la rutina</div>
+            <input className="input" value={editRoutine.name} onChange={e => setEditRoutine(r => ({ ...r, name: e.target.value }))} placeholder="Ej: Pecho & Tríceps" />
+          </div>
+          <div>
+            <div className="label" style={{ marginBottom: 8 }}>Ejercicios ({editRoutine.exercises.length})</div>
+            <div className="col">
+              {editRoutine.exercises.map((ex, i) => (
+                <div key={i} className="row">
+                  <input className="input" style={{ flex: 1 }} value={ex} onChange={e => setEditRoutine(r => { const exs = [...r.exercises]; exs[i] = e.target.value; return { ...r, exercises: exs }; })} />
+                  <button className="btn-icon" onClick={() => setEditRoutine(r => ({ ...r, exercises: r.exercises.filter((_, idx) => idx !== i) }))}>✕</button>
+                </div>
+              ))}
+              <div className="row">
+                <input className="input" style={{ flex: 1 }} value={newExName} onChange={e => setNewExName(e.target.value)} placeholder="Nombre del ejercicio" onKeyDown={e => { if(e.key==='Enter' && newExName.trim()) { setEditRoutine(r => ({ ...r, exercises: [...r.exercises, newExName.trim()] })); setNewExName(''); } }} />
+                <button className="btn btn-primary" onClick={() => { if(!newExName.trim()) return; setEditRoutine(r => ({ ...r, exercises: [...r.exercises, newExName.trim()] })); setNewExName(''); }}>+</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (view === 'day') {
+    const w = workouts[selectedDate];
+    return (
+      <div className="screen fade-in">
+        <div className="topbar">
+          <button className="btn-icon" onClick={() => setView('calendar')}>←</button>
+          <div className="topbar-title">
+            <div className="text-xs text-muted">Entrenamiento</div>
+            <h2>{fmtDate(selectedDate)}</h2>
+          </div>
+        </div>
+        <div className="content">
+          {w ? (
+            <div className="card">
+              <div className="row-between" style={{ marginBottom: 12 }}>
+                <div>
+                  <div className="text-xs text-muted2 mono">Rutina completada</div>
+                  <div className="fw-700" style={{ marginTop: 2 }}>{w.routineName}</div>
+                </div>
+                <span className="badge badge-green">✓ Guardado</span>
+              </div>
+              {Object.entries(w.sets).map(([ex, sets]) => (
+                <div key={ex} style={{ marginBottom: 10 }}>
+                  <div className="text-sm fw-700" style={{ marginBottom: 4 }}>{ex}</div>
+                  <div className="chip-row">
+                    {sets.map((s, i) => {
+                      const unit = exerciseUnits[ex] || 'kg';
+                      const dispW = unit === 'lb' ? kgToLb(parseFloat(s.weight)||0) : (parseFloat(s.weight)||0);
+                      const excluded = s.trackInGraph === false;
+                      return (
+                        <span key={i} className={`badge ${excluded ? '' : 'badge-accent'}`}
+                          style={excluded ? { background: 'rgba(90,90,122,0.15)', color: 'var(--text3)', border: '1px solid var(--border)' } : {}}
+                          title={excluded ? 'Excluido de gráficas' : 'Incluido en gráficas'}
+                        >
+                          S{i+1}: {dispW}{unit} × {s.reps||0}{excluded ? ' ✕' : ''}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+              <div style={{ marginTop: 12 }}>
+                <button className="btn btn-ghost btn-sm" onClick={() => startWorkout(w.routineId)}>✏️ Editar</button>
+              </div>
+            </div>
+          ) : (
+            <div className="card">
+              <div className="text-sm text-muted" style={{ marginBottom: 12 }}>Sin entrenamiento registrado. Selecciona una rutina:</div>
+            </div>
+          )}
+          {!w && (
+            <div className="col">
+              {routines.map(r => (
+                <button key={r.id} className="card" style={{ border: '1px solid var(--border)', cursor: 'pointer', textAlign: 'left', background: 'var(--surface)' }} onClick={() => startWorkout(r.id)}>
+                  <div className="row-between">
+                    <div>
+                      <div className="fw-700">{r.name}</div>
+                      <div className="text-xs text-muted2">{r.exercises.join(', ')}</div>
+                    </div>
+                    <span style={{ color: 'var(--accent)', fontSize: '1.2rem' }}>▶</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+          <button className="btn btn-ghost btn-sm" onClick={() => setView('routines')}>⚙️ Gestionar rutinas</button>
+        </div>
+      </div>
+    );
+  }
+
+  // Calendar view
+  return (
+    <div className="screen fade-in">
+      <div className="topbar">
+        <div className="topbar-title"><h1 className="mono" style={{ fontSize: '1.3rem' }}>FitTrack</h1></div>
+        <button className="btn btn-ghost btn-sm" onClick={() => setView('routines')}>⚙️ Rutinas</button>
+      </div>
+      <div className="content">
+        <div className="card">
+          <div className="row-between" style={{ marginBottom: 12 }}>
+            <button className="btn-icon" onClick={prevMonth}>‹</button>
+            <span className="fw-700 mono">{MONTHS[viewDate.getMonth()]} {viewDate.getFullYear()}</span>
+            <button className="btn-icon" onClick={nextMonth}>›</button>
+          </div>
+          <div className="cal-header">
+            {DAYS.map(d => <div key={d} className="cal-day-name">{d}</div>)}
+          </div>
+          <div className="calendar">
+            {daysInMonth.map(({ date, cur }, i) => {
+              const ds = dateStr(date);
+              const isToday = ds === todayKey;
+              const isSel = ds === selectedDate;
+              const hasW = !!workouts[ds];
+              const nutri = cur ? getNutriStatus(ds) : null;
+              const hasNutri = nutri !== null;
+              return (
+                <div key={i} className={`cal-day ${!cur ? 'other-month' : ''} ${isToday ? 'today' : ''} ${isSel ? 'selected' : ''}`} onClick={() => { setSelectedDate(ds); setView('day'); }}>
+                  <span className="cal-day-num">{date.getDate()}</span>
+                  {/* workout dot */}
+                  {hasW && !isSel && <span style={{ width: 4, height: 4, borderRadius: '50%', background: isSel ? '#0a0a0f' : 'var(--accent4)', flexShrink: 0 }} />}
+                  {/* nutrition indicators — only if there's data */}
+                  {hasNutri && (
+                    <div className="cal-nutri">
+                      {nutri.cal  !== null && (
+                        <span className="cal-nutri-dot" style={{ color: nutri.cal  ? 'var(--accent4)' : 'var(--danger)' }} title={nutri.cal  ? 'Calorías ✓' : 'Calorías ✗'}>
+                          {nutri.cal ? '✓' : '✗'}
+                        </span>
+                      )}
+                      {nutri.prot !== null && (
+                        <span className="cal-nutri-dot" style={{ color: nutri.prot ? 'var(--accent2)' : 'var(--danger)' }} title={nutri.prot ? 'Proteína ✓' : 'Proteína ✗'}>
+                          {nutri.prot ? '✓' : '✗'}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        {/* Legend */}
+        <div className="row" style={{ gap: 14, flexWrap: 'wrap', padding: '2px 4px' }}>
+          <div className="row" style={{ gap: 5 }}>
+            <span style={{ width: 7, height: 7, borderRadius: '50%', background: 'var(--accent4)', display: 'inline-block', flexShrink: 0 }} />
+            <span className="text-xs text-muted2">Entreno</span>
+          </div>
+          <div className="row" style={{ gap: 3 }}>
+            <span style={{ fontSize: '0.62rem', color: 'var(--accent4)', fontWeight: 700, lineHeight: 1 }}>✓</span>
+            <span className="text-xs text-muted2">Cal</span>
+          </div>
+          <div className="row" style={{ gap: 3 }}>
+            <span style={{ fontSize: '0.62rem', color: 'var(--accent2)', fontWeight: 700, lineHeight: 1 }}>✓</span>
+            <span className="text-xs text-muted2">Prot</span>
+          </div>
+          <div className="row" style={{ gap: 3 }}>
+            <span style={{ fontSize: '0.62rem', color: 'var(--danger)', fontWeight: 700, lineHeight: 1 }}>✗</span>
+            <span className="text-xs text-muted2">No cumplido</span>
+          </div>
+        </div>
+        <div className="stat-grid">
+          <div className="stat-box">
+            <div className="stat-value text-accent">{Object.keys(workouts).length}</div>
+            <div className="stat-label">Entrenamientos</div>
+          </div>
+          <div className="stat-box">
+            <div className="stat-value text-green">{Object.keys(workouts).filter(d => { const w = new Date(d+'T00:00:00'); const now = new Date(); return w >= new Date(now.getFullYear(), now.getMonth(), 1); }).length}</div>
+            <div className="stat-label">Este mes</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ── SCREEN: NUTRICIÓN ─────────────────────────────────────────────────────────
+
+// Categories definition — each food in the DB belongs to one of these
+const FOOD_CATEGORIES = [
+  { key: 'carbos',    label: 'Carbohidratos', icon: '🌾', color: 'var(--accent)',  badge: 'badge-accent',  desc: 'Arroz, pasta, pan, avena, frutas…' },
+  { key: 'proteinas', label: 'Proteínas',     icon: '🥩', color: 'var(--accent2)', badge: 'badge-purple',  desc: 'Pollo, huevo, carne, legumbres…' },
+  { key: 'lacteos',   label: 'Lácteos',       icon: '🥛', color: '#67e8f9',        badge: 'badge-accent',  desc: 'Leche, yogur, queso, requesón…' },
+  { key: 'grasas',    label: 'Grasas',        icon: '🥑', color: 'var(--accent3)', badge: 'badge-pink',    desc: 'Aceite, frutos secos, palta, mantequilla…' },
+  { key: 'verduras',  label: 'Verduras',      icon: '🥦', color: 'var(--accent4)', badge: 'badge-green',   desc: 'Brócoli, espinaca, tomate, pepino…' },
+  { key: 'snacks',    label: 'Snacks',        icon: '🍪', color: 'var(--warn)',     badge: '',              desc: 'Galletas, barras, golosinas…' },
+  { key: 'bebidas',   label: 'Bebidas',       icon: '🧃', color: '#a5f3fc',        badge: '',              desc: 'Jugos, batidos, bebidas deportivas…' },
+  { key: 'otros',     label: 'Otros',         icon: '🍽️', color: 'var(--text2)',   badge: '',              desc: 'Salsas, condimentos, suplementos…' },
+];
+const CAT_MAP = Object.fromEntries(FOOD_CATEGORIES.map(c => [c.key, c]));
+const EMPTY_DAY_DATA = () => Object.fromEntries(FOOD_CATEGORIES.map(c => [c.key, []]));
+
+// Migrate old nutrition data keys (desayuno/almuerzo/cena → otros) silently
+const migrateNutritionData = (data) => {
+  const OLD_KEYS = ['desayuno', 'almuerzo', 'cena'];
+  const migrated = {};
+  Object.entries(data).forEach(([date, dayRaw]) => {
+    const day = EMPTY_DAY_DATA();
+    // Copy existing category keys
+    FOOD_CATEGORIES.forEach(c => { if (dayRaw[c.key]) day[c.key] = dayRaw[c.key]; });
+    // Migrate old meal keys into 'otros'
+    OLD_KEYS.forEach(oldKey => {
+      if (dayRaw[oldKey] && dayRaw[oldKey].length > 0) {
+        day.otros = [...day.otros, ...dayRaw[oldKey]];
+      }
+    });
+    // Migrate old 'snacks' key (same name, keep as-is — already handled above)
+    migrated[date] = day;
+  });
+  return migrated;
+};
+
+const NutritionScreen = () => {
+  const [selectedDate, setSelectedDate] = useState(todayStr());
+  const [foods, setFoods] = useState(initFoods);
+  const [nutrition, setNutrition] = useState(() => {
+    const raw = initNutrition();
+    return migrateNutritionData(raw);
+  });
+  const [goals, setGoals] = useState(initGoals);
+  const [view, setView] = useState('day'); // day | foods | addFood
+  const [editFood, setEditFood] = useState(null);
+  const [addingCategory, setAddingCategory] = useState(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [goalsModal, setGoalsModal] = useState(false);
+  const [tempGoals, setTempGoals] = useState(goals);
+  const [selFood, setSelFood] = useState(null);
+  const [selQty, setSelQty] = useState('1');
+  const [foodSearch, setFoodSearch] = useState('');
+  // addFood form
+  const blankForm = { name: '', category: 'proteinas', unit: 'g', calories: '', protein: '', carbs: '', fat: '' };
+  const [foodForm, setFoodForm] = useState(blankForm);
+
+  const saveFoods = (f) => { setFoods(f); DB.set('foods', f); };
+  const saveNutrition = (n) => {
+    setNutrition(n);
+    // Find which date changed and persist it
+    Object.entries(n).forEach(([date, data]) => DB.setNutritionDay(date, data));
+  };
+  const saveGoals = (g) => { setGoals(g); DB.set('goals', g); };
+
+  const dayData = nutrition[selectedDate] || EMPTY_DAY_DATA();
+
+  const calcMacros = (items) => items.reduce((acc, item) => ({
+    calories: acc.calories + (item.calories || 0),
+    protein: acc.protein + (item.protein || 0),
+    carbs: acc.carbs + (item.carbs || 0),
+    fat: acc.fat + (item.fat || 0),
+  }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+
+  const allItems = FOOD_CATEGORIES.flatMap(c => dayData[c.key] || []);
+  const totals = calcMacros(allItems);
+
+  const openAddFood = (catKey) => {
+    setAddingCategory(catKey);
+    setSelFood(null);
+    setSelQty('1');
+    setFoodSearch('');
+    setModalOpen(true);
+  };
+
+  const confirmAddFood = () => {
+    if (!selFood || !selQty) return;
+    const qty = parseFloat(selQty) || 1;
+    const item = {
+      id: uid(), foodId: selFood.id, name: selFood.name, unit: selFood.unit, qty,
+      calories: +(selFood.calories * qty).toFixed(1),
+      protein:  +(selFood.protein  * qty).toFixed(1),
+      carbs:    +(selFood.carbs    * qty).toFixed(1),
+      fat:      +(selFood.fat      * qty).toFixed(1),
+    };
+    const cat = addingCategory;
+    const updated = { ...dayData, [cat]: [...(dayData[cat] || []), item] };
+    saveNutrition({ ...nutrition, [selectedDate]: updated });
+    setModalOpen(false);
+  };
+
+  const removeItem = (catKey, id) => {
+    const updated = { ...dayData, [catKey]: (dayData[catKey] || []).filter(i => i.id !== id) };
+    saveNutrition({ ...nutrition, [selectedDate]: updated });
+  };
+
+  // Foods filtered by the category being added (show all if searching)
+  const filteredFoods = useMemo(() => {
+    const q = foodSearch.trim().toLowerCase();
+    if (q) return foods.filter(f => f.name.toLowerCase().includes(q));
+    // Default: show foods whose stored category matches the target category, then rest
+    const catFoods = foods.filter(f => (f.category || 'otros') === addingCategory);
+    const otherFoods = foods.filter(f => (f.category || 'otros') !== addingCategory);
+    return [...catFoods, ...otherFoods];
+  }, [foods, addingCategory, foodSearch]);
+
+  const saveFood = () => {
+    if (!foodForm.name.trim()) return;
+    const f = {
+      id: editFood?.id || uid(),
+      name: foodForm.name,
+      category: foodForm.category,
+      unit: foodForm.unit,
+      calories: parseFloat(foodForm.calories)||0,
+      protein:  parseFloat(foodForm.protein)||0,
+      carbs:    parseFloat(foodForm.carbs)||0,
+      fat:      parseFloat(foodForm.fat)||0,
+    };
+    if (editFood) saveFoods(foods.map(x => x.id === editFood.id ? f : x));
+    else saveFoods([...foods, f]);
+    setView('foods');
+    setEditFood(null);
+    setFoodForm(blankForm);
+  };
+
+  // ── VIEW: ADD/EDIT FOOD ────────────────────────────────────────────────────
+  if (view === 'addFood') {
+    return (
+      <div className="screen fade-in">
+        <div className="topbar">
+          <button className="btn-icon" onClick={() => { setView('foods'); setEditFood(null); setFoodForm(blankForm); }}>←</button>
+          <div className="topbar-title"><h2>{editFood ? 'Editar alimento' : 'Nuevo alimento'}</h2></div>
+          <button className="btn btn-primary btn-sm" onClick={saveFood}>Guardar</button>
+        </div>
+        <div className="content">
+          <div>
+            <div className="label">Nombre</div>
+            <input className="input" type="text" value={foodForm.name} onChange={e => setFoodForm(f => ({ ...f, name: e.target.value }))} placeholder="Ej: Pechuga de pollo" />
+          </div>
+          <div>
+            <div className="label">Categoría</div>
+            <select className="input" value={foodForm.category} onChange={e => setFoodForm(f => ({ ...f, category: e.target.value }))}>
+              {FOOD_CATEGORIES.map(c => (
+                <option key={c.key} value={c.key}>{c.icon} {c.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <div className="label">Unidad de medida</div>
+            <input className="input" type="text" value={foodForm.unit} onChange={e => setFoodForm(f => ({ ...f, unit: e.target.value }))} placeholder="gramo, taza, unidad, cucharada…" />
+          </div>
+          <div className="divider" />
+          <div className="text-xs text-muted2">Valores nutricionales por 1 {foodForm.unit || 'unidad'}</div>
+          {[['calories','Calorías (kcal)'],['protein','Proteína (g)'],['carbs','Carbohidratos (g)'],['fat','Grasas (g)']].map(([field, label]) => (
+            <div key={field}>
+              <div className="label">{label}</div>
+              <input className="input" type="number" inputMode="decimal" placeholder="0" value={foodForm[field]} onChange={e => setFoodForm(f => ({ ...f, [field]: e.target.value }))} />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // ── VIEW: FOOD DATABASE ────────────────────────────────────────────────────
+  if (view === 'foods') {
+    // Group foods by category for display
+    const grouped = FOOD_CATEGORIES.map(cat => ({
+      ...cat,
+      items: foods.filter(f => (f.category || 'otros') === cat.key),
+    })).filter(g => g.items.length > 0);
+
+    return (
+      <div className="screen fade-in">
+        <div className="topbar">
+          <button className="btn-icon" onClick={() => setView('day')}>←</button>
+          <div className="topbar-title"><h2>Base de Alimentos</h2></div>
+          <button className="btn btn-primary btn-sm" onClick={() => { setEditFood(null); setFoodForm(blankForm); setView('addFood'); }}>+ Nuevo</button>
+        </div>
+        <div className="content">
+          {foods.length === 0 && <div className="empty-state"><div className="empty-icon">🥗</div><div className="empty-text">Sin alimentos registrados</div></div>}
+          {grouped.map(g => (
+            <div key={g.key}>
+              <div className="row" style={{ gap: 8, marginBottom: 8 }}>
+                <span>{g.icon}</span>
+                <span className="label" style={{ color: g.color }}>{g.label}</span>
+              </div>
+              {g.items.map(f => (
+                <div key={f.id} className="card-sm" style={{ marginBottom: 8 }}>
+                  <div className="row-between" style={{ marginBottom: 4 }}>
+                    <div className="fw-700 text-sm">{f.name}</div>
+                    <div className="row" style={{ gap: 6 }}>
+                      <button className="btn btn-ghost btn-sm" onClick={() => {
+                        setEditFood(f);
+                        setFoodForm({ name: f.name, category: f.category || 'otros', unit: f.unit, calories: String(f.calories), protein: String(f.protein), carbs: String(f.carbs), fat: String(f.fat) });
+                        setView('addFood');
+                      }}>✏️</button>
+                      <button className="btn btn-danger btn-sm" onClick={() => { if(confirm('¿Eliminar?')) saveFoods(foods.filter(x => x.id !== f.id)); }}>🗑</button>
+                    </div>
+                  </div>
+                  <div className="text-xs text-muted2">por 1 {f.unit} — {f.calories} kcal · P:{f.protein}g · C:{f.carbs}g · G:{f.fat}g</div>
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // ── VIEW: DAY ──────────────────────────────────────────────────────────────
+  const addingCat = CAT_MAP[addingCategory] || FOOD_CATEGORIES[0];
+
+  return (
+    <div className="screen fade-in">
+      <div className="topbar">
+        <div className="topbar-title"><h2>Nutrición</h2></div>
+        <div className="row" style={{ gap: 8 }}>
+          <button className="btn btn-ghost btn-sm" onClick={() => { setTempGoals(goals); setGoalsModal(true); }}>🎯</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => setView('foods')}>🥗 DB</button>
+        </div>
+      </div>
+      <div className="content">
+
+        {/* Date navigator */}
+        <div className="row" style={{ gap: 8 }}>
+          <button className="btn-icon" onClick={() => { const d = new Date(selectedDate+'T00:00:00'); d.setDate(d.getDate()-1); setSelectedDate(dateStr(d)); }}>‹</button>
+          <div className="card-sm" style={{ flex: 1, textAlign: 'center', padding: '8px' }}>
+            <div className="text-sm fw-700">{selectedDate === todayStr() ? 'Hoy' : fmtDate(selectedDate)}</div>
+          </div>
+          <button className="btn-icon" onClick={() => { const d = new Date(selectedDate+'T00:00:00'); d.setDate(d.getDate()+1); setSelectedDate(dateStr(d)); }}>›</button>
+        </div>
+
+        {/* Calorie summary */}
+        <div className="card">
+          <div className="row-between" style={{ marginBottom: 12 }}>
+            <div>
+              <div className="stat-value text-accent">{Math.round(totals.calories)}</div>
+              <div className="stat-label">/ {goals.calories} kcal</div>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <div className="text-xs text-muted2">{totals.calories > goals.calories ? 'Excedido' : 'Restante'}</div>
+              <div className="fw-700 mono" style={{ color: totals.calories > goals.calories ? 'var(--danger)' : 'var(--accent4)' }}>
+                {Math.abs(goals.calories - Math.round(totals.calories))} kcal
+              </div>
+            </div>
+          </div>
+          <div className="progress-bar" style={{ marginBottom: 14 }}>
+            <div className="progress-fill" style={{ width: Math.min(100, goals.calories > 0 ? totals.calories/goals.calories*100 : 0)+'%', background: totals.calories > goals.calories ? 'var(--danger)' : 'var(--accent)' }} />
+          </div>
+          <div className="col" style={{ gap: 8 }}>
+            <MacroBar label="Proteína"      value={totals.protein} goal={goals.protein} color="var(--accent2)" />
+            <MacroBar label="Carbohidratos" value={totals.carbs}   goal={goals.carbs}   color="var(--accent)"  />
+            <MacroBar label="Grasas"        value={totals.fat}     goal={goals.fat}      color="var(--accent3)" />
+          </div>
+        </div>
+
+        {/* Category sections */}
+        {FOOD_CATEGORIES.map(cat => {
+          const items = dayData[cat.key] || [];
+          const catTotals = calcMacros(items);
+          const hasItems = items.length > 0;
+          return (
+            <div key={cat.key} className="card" style={{ borderLeft: `3px solid ${cat.color}` }}>
+              <div className="row-between" style={{ marginBottom: hasItems ? 10 : 0 }}>
+                <div className="row" style={{ gap: 8 }}>
+                  <span style={{ fontSize: '1.1rem' }}>{cat.icon}</span>
+                  <div>
+                    <div className="fw-700 text-sm" style={{ color: cat.color }}>{cat.label}</div>
+                    {hasItems
+                      ? <div className="text-xs text-muted2 mono">{Math.round(catTotals.calories)} kcal · P:{catTotals.protein.toFixed(1)}g · C:{catTotals.carbs.toFixed(1)}g</div>
+                      : <div className="text-xs text-muted2">{cat.desc}</div>
+                    }
+                  </div>
+                </div>
+                <button className="btn btn-ghost btn-sm" onClick={() => openAddFood(cat.key)}>+ Añadir</button>
+              </div>
+              {items.map(item => (
+                <div key={item.id} className="row-between" style={{ paddingTop: 8, borderTop: '1px solid var(--border)', marginTop: 4 }}>
+                  <div>
+                    <div className="text-sm">{item.name}</div>
+                    <div className="text-xs text-muted2">{item.qty} {item.unit} · <span className="mono">{item.calories} kcal · P:{item.protein}g</span></div>
+                  </div>
+                  <button className="btn-icon" style={{ fontSize: '0.7rem', padding: '6px' }} onClick={() => removeItem(cat.key, item.id)}>✕</button>
+                </div>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Add food modal */}
+      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={`${addingCat.icon} ${addingCat.label}`}>
+        <div className="col" style={{ gap: 12 }}>
+          {!selFood ? (
+            <>
+              <input
+                className="input"
+                placeholder="Buscar alimento…"
+                value={foodSearch}
+                onChange={e => setFoodSearch(e.target.value)}
+                autoFocus
+              />
+              {filteredFoods.length === 0 && (
+                <div className="empty-state" style={{ padding: '20px 0' }}>
+                  <div className="empty-text text-muted2">No encontrado. <button className="btn btn-ghost btn-sm" style={{ display: 'inline-flex', marginLeft: 4 }} onClick={() => { setModalOpen(false); setFoodForm({ ...blankForm, category: addingCategory, name: foodSearch }); setView('addFood'); }}>+ Crear</button></div>
+                </div>
+              )}
+              <div style={{ maxHeight: '55vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {filteredFoods.map(f => {
+                  const fCat = CAT_MAP[f.category || 'otros'];
+                  return (
+                    <button key={f.id} className="card-sm" style={{ cursor: 'pointer', textAlign: 'left', border: '1px solid var(--border)' }} onClick={() => { setSelFood(f); setSelQty('1'); }}>
+                      <div className="row-between">
+                        <div className="fw-700 text-sm">{f.name}</div>
+                        <span className="text-xs" style={{ color: fCat?.color || 'var(--text3)' }}>{fCat?.icon}</span>
+                      </div>
+                      <div className="text-xs text-muted2">1 {f.unit} · {f.calories} kcal · P:{f.protein}g · C:{f.carbs}g</div>
+                    </button>
+                  );
+                })}
+              </div>
+              <button className="btn btn-ghost btn-sm btn-full" onClick={() => { setModalOpen(false); setFoodForm({ ...blankForm, category: addingCategory }); setView('addFood'); }}>
+                + Crear alimento nuevo
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="card-sm" style={{ borderLeft: `3px solid ${addingCat.color}` }}>
+                <div className="fw-700">{selFood.name}</div>
+                <div className="text-xs text-muted2">por 1 {selFood.unit}: {selFood.calories} kcal · P:{selFood.protein}g · C:{selFood.carbs}g · G:{selFood.fat}g</div>
+              </div>
+              <div>
+                <div className="label">Cantidad ({selFood.unit}s)</div>
+                <input className="input" type="number" inputMode="decimal" value={selQty} onChange={e => setSelQty(e.target.value)} autoFocus />
+              </div>
+              <div className="highlight-row">
+                <div className="text-xs text-muted2">
+                  Total: <span className="mono" style={{ color: addingCat.color }}>
+                    {(selFood.calories * parseFloat(selQty||0)).toFixed(0)} kcal · P:{(selFood.protein * parseFloat(selQty||0)).toFixed(1)}g · C:{(selFood.carbs * parseFloat(selQty||0)).toFixed(1)}g · G:{(selFood.fat * parseFloat(selQty||0)).toFixed(1)}g
+                  </span>
+                </div>
+              </div>
+              <div className="row" style={{ gap: 8 }}>
+                <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setSelFood(null)}>← Volver</button>
+                <button className="btn btn-primary" style={{ flex: 1 }} onClick={confirmAddFood}>Añadir</button>
+              </div>
+            </>
+          )}
+        </div>
+      </Modal>
+
+      {/* Goals modal */}
+      <Modal open={goalsModal} onClose={() => setGoalsModal(false)} title="🎯 Objetivos diarios">
+        <div className="col" style={{ gap: 12 }}>
+          {[['calories','Calorías (kcal)'],['protein','Proteína (g)'],['carbs','Carbohidratos (g)'],['fat','Grasas (g)']].map(([k, label]) => (
+            <div key={k}>
+              <div className="label">{label}</div>
+              <input className="input" type="number" inputMode="decimal" value={tempGoals[k]} onChange={e => setTempGoals(g => ({ ...g, [k]: parseFloat(e.target.value)||0 }))} />
+            </div>
+          ))}
+          <button className="btn btn-primary btn-full" onClick={() => { saveGoals(tempGoals); setGoalsModal(false); }}>Guardar objetivos</button>
+        </div>
+      </Modal>
+    </div>
+  );
+};
+
+// ── SCREEN: MÉTRICAS ─────────────────────────────────────────────────────────
+const MetricsScreen = () => {
+  const [bodyMetrics, setBodyMetrics] = useState(initBodyMetrics);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [form, setForm] = useState({ date: todayStr(), weight: '', waist: '', chest: '', arm: '', leg: '' });
+  const [editId, setEditId] = useState(null);
+
+  const saveMetrics = (m) => { setBodyMetrics(m); DB.set('bodyMetrics', m); };
+
+  const saveEntry = () => {
+    if (!form.date) return;
+    const entry = { id: editId || uid(), ...form, weight: parseFloat(form.weight)||0, waist: parseFloat(form.waist)||0, chest: parseFloat(form.chest)||0, arm: parseFloat(form.arm)||0, leg: parseFloat(form.leg)||0 };
+    if (editId) saveMetrics(bodyMetrics.map(m => m.id === editId ? entry : m));
+    else saveMetrics([...bodyMetrics, entry].sort((a, b) => a.date.localeCompare(b.date)));
+    setModalOpen(false);
+    setEditId(null);
+    setForm({ date: todayStr(), weight: '', waist: '', chest: '', arm: '', leg: '' });
+  };
+
+  const weightData = bodyMetrics.filter(m => m.weight > 0).map(m => ({ label: m.date.slice(5), value: m.weight }));
+  const latest = bodyMetrics[bodyMetrics.length - 1];
+  const previous = bodyMetrics[bodyMetrics.length - 2];
+
+  return (
+    <div className="screen fade-in">
+      <div className="topbar">
+        <div className="topbar-title"><h2>Métricas Corporales</h2></div>
+        <button className="btn btn-primary btn-sm" onClick={() => { setEditId(null); setForm({ date: todayStr(), weight: '', waist: '', chest: '', arm: '', leg: '' }); setModalOpen(true); }}>+ Registrar</button>
+      </div>
+      <div className="content">
+        {latest && (
+          <div className="stat-grid">
+            <div className="stat-box">
+              <div className="stat-value text-accent">{latest.weight} <span style={{ fontSize: '0.9rem' }}>kg</span></div>
+              <div className="stat-label">Peso actual</div>
+              {previous && previous.weight > 0 && (
+                <div className="text-xs" style={{ marginTop: 4, color: latest.weight < previous.weight ? 'var(--accent4)' : 'var(--danger)' }}>
+                  {latest.weight < previous.weight ? '▼' : '▲'} {Math.abs(latest.weight - previous.weight).toFixed(1)}kg
+                </div>
+              )}
+            </div>
+            <div className="stat-box">
+              <div className="stat-value text-purple">{bodyMetrics.length}</div>
+              <div className="stat-label">Registros</div>
+            </div>
+            {latest.waist > 0 && <div className="stat-box"><div className="stat-value text-pink">{latest.waist}<span style={{ fontSize: '0.9rem' }}>cm</span></div><div className="stat-label">Cintura</div></div>}
+            {latest.arm > 0 && <div className="stat-box"><div className="stat-value text-green">{latest.arm}<span style={{ fontSize: '0.9rem' }}>cm</span></div><div className="stat-label">Brazo</div></div>}
+          </div>
+        )}
+
+        {weightData.length >= 2 && (
+          <div className="card">
+            <h3 style={{ marginBottom: 12 }}>📉 Evolución del peso</h3>
+            <LineChartComp data={weightData} label="Peso" color="#6ee7f7" yLabel="kg" />
+          </div>
+        )}
+
+        <div className="col" style={{ gap: 8 }}>
+          {[...bodyMetrics].reverse().map(m => (
+            <div key={m.id} className="card-sm">
+              <div className="row-between">
+                <div>
+                  <div className="text-xs text-muted2 mono">{fmtDate(m.date)}</div>
+                  <div className="fw-700 text-sm">{m.weight > 0 ? `${m.weight} kg` : '—'}</div>
+                  <div className="chip-row" style={{ marginTop: 4 }}>
+                    {m.waist > 0 && <span className="badge badge-pink">Cintura: {m.waist}cm</span>}
+                    {m.chest > 0 && <span className="badge badge-purple">Pecho: {m.chest}cm</span>}
+                    {m.arm > 0 && <span className="badge badge-green">Brazo: {m.arm}cm</span>}
+                    {m.leg > 0 && <span className="badge badge-accent">Pierna: {m.leg}cm</span>}
+                  </div>
+                </div>
+                <div className="row" style={{ gap: 8 }}>
+                  <button className="btn btn-ghost btn-sm" onClick={() => { setEditId(m.id); setForm({ date: m.date, weight: String(m.weight||''), waist: String(m.waist||''), chest: String(m.chest||''), arm: String(m.arm||''), leg: String(m.leg||'') }); setModalOpen(true); }}>✏️</button>
+                  <button className="btn btn-danger btn-sm" onClick={() => saveMetrics(bodyMetrics.filter(x => x.id !== m.id))}>🗑</button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        {bodyMetrics.length === 0 && <div className="empty-state"><div className="empty-icon">⚖️</div><div className="empty-text">Registra tu primer peso</div></div>}
+      </div>
+
+      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editId ? 'Editar registro' : 'Nuevo registro'}>
+        <div className="col" style={{ gap: 12 }}>
+          <div><div className="label">Fecha</div><input className="input" type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} /></div>
+          <div><div className="label">Peso corporal (kg)</div><input className="input" type="number" inputMode="decimal" placeholder="70.5" value={form.weight} onChange={e => setForm(f => ({ ...f, weight: e.target.value }))} /></div>
+          <div className="divider" />
+          <div className="text-xs text-muted2">Medidas opcionales (cm)</div>
+          {[['waist','Cintura'],['chest','Pecho'],['arm','Brazo'],['leg','Pierna']].map(([k, label]) => (
+            <div key={k}><div className="label">{label}</div><input className="input" type="number" inputMode="decimal" placeholder="—" value={form[k]} onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))} /></div>
+          ))}
+          <button className="btn btn-primary btn-full" onClick={saveEntry}>Guardar</button>
+        </div>
+      </Modal>
+    </div>
+  );
+};
+
+// ── SCREEN: PROGRESO ──────────────────────────────────────────────────────────
+const ProgressScreen = () => {
+  const [workouts] = useState(initWorkouts);
+  const [nutrition] = useState(initNutrition);
+  const [bodyMetrics] = useState(initBodyMetrics);
+  const [exerciseUnits] = useState(initExerciseUnits);
+  const [tab, setTab] = useState('workout');
+  const [selExercise, setSelExercise] = useState('');
+
+  // Extract all exercise names from workouts
+  const allExercises = useMemo(() => {
+    const set = new Set();
+    Object.values(workouts).forEach(w => { if (w.sets) Object.keys(w.sets).forEach(ex => set.add(ex)); });
+    return [...set];
+  }, [workouts]);
+
+  // Exercise progress data — only tracked sets
+  const exProgressData = useMemo(() => {
+    if (!selExercise) return [];
+    return Object.entries(workouts)
+      .filter(([, w]) => w.sets?.[selExercise])
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([date, w]) => {
+        const sets = w.sets[selExercise].filter(s => s.trackInGraph !== false);
+        if (!sets.length) return null;
+        const maxWeight = Math.max(...sets.map(s => parseFloat(s.weight)||0));
+        return { label: date.slice(5), value: maxWeight };
+      })
+      .filter(Boolean);
+  }, [selExercise, workouts]);
+
+  // Volume data per workout — only tracked sets
+  const volumeData = useMemo(() => Object.entries(workouts).sort((a,b)=>a[0].localeCompare(b[0])).slice(-15).map(([date, w]) => {
+    let vol = 0;
+    if (w.sets) Object.values(w.sets).forEach(sets => sets.forEach(s => {
+      if (s.trackInGraph === false) return;
+      vol += (parseFloat(s.weight)||0) * (parseInt(s.reps)||0);
+    }));
+    return { label: date.slice(5), value: Math.round(vol) };
+  }), [workouts]);
+
+  // Nutrition data
+  const calData = useMemo(() => Object.entries(nutrition).sort((a,b)=>a[0].localeCompare(b[0])).slice(-14).map(([date, d]) => {
+    const items = [...(d.desayuno||[]), ...(d.almuerzo||[]), ...(d.cena||[]), ...(d.snacks||[])];
+    const cal = items.reduce((a, i) => a + (i.calories||0), 0);
+    return { label: date.slice(5), value: Math.round(cal) };
+  }), [nutrition]);
+
+  const protData = useMemo(() => Object.entries(nutrition).sort((a,b)=>a[0].localeCompare(b[0])).slice(-14).map(([date, d]) => {
+    const items = [...(d.desayuno||[]), ...(d.almuerzo||[]), ...(d.cena||[]), ...(d.snacks||[])];
+    const prot = items.reduce((a, i) => a + (i.protein||0), 0);
+    return { label: date.slice(5), value: +prot.toFixed(1) };
+  }), [nutrition]);
+
+  const weightData = bodyMetrics.filter(m=>m.weight>0).map(m => ({ label: m.date.slice(5), value: m.weight }));
+
+  return (
+    <div className="screen fade-in">
+      <div className="topbar">
+        <div className="topbar-title"><h2>Progreso</h2></div>
+      </div>
+      <div className="content">
+        <div className="tabs">
+          {[['workout','💪 Gym'],['nutrition','🥗 Nutrición'],['body','⚖️ Cuerpo']].map(([k, label]) => (
+            <div key={k} className={`tab ${tab===k?'active':''}`} onClick={() => setTab(k)}>{label}</div>
+          ))}
+        </div>
+
+        {tab === 'workout' && (
+          <div className="col fade-in">
+            <div className="card">
+              <h3 style={{ marginBottom: 12 }}>📊 Volumen total por sesión</h3>
+              <LineChartComp data={volumeData} label="Volumen" color="#a78bfa" yLabel="kg·rep" />
+            </div>
+            <div className="card">
+              <h3 style={{ marginBottom: 12 }}>🏋️ Progreso por ejercicio</h3>
+              {allExercises.length === 0 ? (
+                <div className="empty-state"><div className="empty-text">Sin datos de entrenamiento aún</div></div>
+              ) : (
+                <>
+                  <select className="input" style={{ marginBottom: 12 }} value={selExercise} onChange={e => setSelExercise(e.target.value)}>
+                    <option value="">Selecciona ejercicio…</option>
+                    {allExercises.map(ex => <option key={ex} value={ex}>{ex}</option>)}
+                  </select>
+                  {selExercise && (
+                    <>
+                      <div className="text-xs text-muted2" style={{ marginBottom: 8 }}>
+                        Solo se grafican series marcadas con ✓. Series excluidas (poleas no comparables, etc.) no afectan el progreso.
+                      </div>
+                      <LineChartComp data={exProgressData} label="Peso máx." color="#6ee7f7" yLabel={exerciseUnits[selExercise] || 'kg'} />
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {tab === 'nutrition' && (
+          <div className="col fade-in">
+            <div className="card">
+              <h3 style={{ marginBottom: 12 }}>🔥 Calorías diarias</h3>
+              <LineChartComp data={calData} label="Calorías" color="#f472b6" yLabel="kcal" />
+            </div>
+            <div className="card">
+              <h3 style={{ marginBottom: 12 }}>🥩 Proteína diaria</h3>
+              <LineChartComp data={protData} label="Proteína" color="#a78bfa" yLabel="g" />
+            </div>
+          </div>
+        )}
+
+        {tab === 'body' && (
+          <div className="col fade-in">
+            <div className="card">
+              <h3 style={{ marginBottom: 12 }}>⚖️ Evolución del peso</h3>
+              <LineChartComp data={weightData} label="Peso" color="#6ee7f7" yLabel="kg" />
+            </div>
+            {weightData.length >= 2 && (
+              <div className="stat-grid">
+                <div className="stat-box">
+                  <div className="stat-value text-accent">{weightData[0].value}</div>
+                  <div className="stat-label">Peso inicial (kg)</div>
+                </div>
+                <div className="stat-box">
+                  <div className="stat-value" style={{ color: weightData[weightData.length-1].value < weightData[0].value ? 'var(--accent4)' : 'var(--danger)' }}>
+                    {(weightData[weightData.length-1].value - weightData[0].value).toFixed(1)}
+                  </div>
+                  <div className="stat-label">Cambio total (kg)</div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// ── LOGIN SCREEN ──────────────────────────────────────────────────────────────
+const LoginScreen = ({ onLogin }) => {
+  const [mode, setMode]       = useState('login'); // 'login' | 'register'
+  const [email, setEmail]     = useState('');
+  const [pass, setPass]       = useState('');
+  const [error, setError]     = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const submit = async () => {
+    if (!email.trim() || !pass.trim()) { setError('Completa todos los campos'); return; }
+    setLoading(true); setError('');
+    try {
+      if (mode === 'register') {
+        const { data, error: e } = await supa.auth.signUp({ email: email.trim(), password: pass });
+        if (e) throw e;
+        if (data.user && !data.session) {
+          setError('Revisa tu email para confirmar la cuenta, luego inicia sesión.');
+          setMode('login'); setLoading(false); return;
+        }
+        onLogin(data.user);
+      } else {
+        const { data, error: e } = await supa.auth.signInWithPassword({ email: email.trim(), password: pass });
+        if (e) throw e;
+        onLogin(data.user);
+      }
+    } catch (e) {
+      setError(e.message || 'Error al conectar');
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '32px 24px', background: 'var(--bg)' }}>
+      <div style={{ marginBottom: 40 }}>
+        <div className="mono" style={{ fontSize: '2rem', fontWeight: 700, color: 'var(--accent)', letterSpacing: '-0.04em' }}>FitTrack</div>
+        <div className="text-muted2" style={{ marginTop: 6, fontSize: '0.9rem' }}>Tu entrenamiento, sincronizado.</div>
+      </div>
+
+      <div className="tabs" style={{ marginBottom: 24 }}>
+        <div className={`tab ${mode === 'login' ? 'active' : ''}`} onClick={() => { setMode('login'); setError(''); }}>Iniciar sesión</div>
+        <div className={`tab ${mode === 'register' ? 'active' : ''}`} onClick={() => { setMode('register'); setError(''); }}>Crear cuenta</div>
+      </div>
+
+      <div className="col" style={{ gap: 14 }}>
+        <div>
+          <div className="label">Email</div>
+          <input className="input" type="email" inputMode="email" autoComplete="email" placeholder="tu@email.com" value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && submit()} />
+        </div>
+        <div>
+          <div className="label">Contraseña</div>
+          <input className="input" type="password" autoComplete={mode === 'register' ? 'new-password' : 'current-password'} placeholder="••••••••" value={pass} onChange={e => setPass(e.target.value)} onKeyDown={e => e.key === 'Enter' && submit()} />
+        </div>
+        {error && <div style={{ fontSize: '0.8rem', color: 'var(--danger)', background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.2)', borderRadius: 8, padding: '10px 12px' }}>{error}</div>}
+        <button className="btn btn-primary btn-full" style={{ marginTop: 4, padding: '14px' }} onClick={submit} disabled={loading}>
+          {loading ? 'Conectando…' : mode === 'register' ? 'Crear cuenta' : 'Entrar'}
+        </button>
+      </div>
+
+      <div style={{ marginTop: 32, fontSize: '0.75rem', color: 'var(--text3)', textAlign: 'center', lineHeight: 1.6 }}>
+        Tus datos se sincronizan entre todos tus dispositivos.<br/>Protegidos con Supabase.
+      </div>
+    </div>
+  );
+};
+
+// ── APP ROOT ──────────────────────────────────────────────────────────────────
+const App = () => {
+  const [user, setUser]       = useState(null);
+  const [syncing, setSyncing] = useState(false);
+  const [synced, setSynced]   = useState(false);
+  const [tab, setTab]         = useState('workout');
+
+  // On mount: check if already logged in
+  useEffect(() => {
+    supa.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) handleLogin(session.user, false);
+    });
+    // Listen for auth changes (e.g. email confirmation)
+    const { data: { subscription } } = supa.auth.onAuthStateChange((_event, session) => {
+      if (session?.user && !user) handleLogin(session.user, false);
+    });
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogin = async (u, isNew = false) => {
+    setUser(u);
+    setUserId(u.id);
+    setSyncing(true);
+    try {
+      await DB.syncDown();       // pull data from Supabase → localStorage cache
+      if (isNew) await DB.syncUp(); // first login: push any existing localStorage data
+    } catch(e) {}
+    setSyncing(false);
+    setSynced(true);
+  };
+
+  const handleLogout = async () => {
+    await supa.auth.signOut();
+    setUser(null);
+    setUserId(null);
+    setSynced(false);
+  };
+
+  if (!user) return <LoginScreen onLogin={(u) => handleLogin(u, true)} />;
+
+  if (syncing) return (
+    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16, color: 'var(--text2)' }}>
+      <div className="mono" style={{ fontSize: '1.4rem', color: 'var(--accent)' }}>FitTrack</div>
+      <div style={{ fontSize: '0.85rem' }}>Sincronizando datos…</div>
+      <div style={{ width: 40, height: 40, border: '3px solid var(--border)', borderTop: '3px solid var(--accent)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+    </div>
+  );
+
+  const SCREENS = {
+    workout:   <WorkoutScreen />,
+    nutrition: <NutritionScreen />,
+    metrics:   <MetricsScreen />,
+    progress:  <ProgressScreen />,
+    account:   <AccountScreen user={user} onLogout={handleLogout} />,
+  };
+  const NAV = [
+    { key: 'workout',   icon: '🏋️', label: 'Gym'      },
+    { key: 'nutrition', icon: '🥗',  label: 'Nutrición'},
+    { key: 'metrics',   icon: '⚖️',  label: 'Métricas' },
+    { key: 'progress',  icon: '📈',  label: 'Progreso' },
+    { key: 'account',   icon: '👤',  label: 'Cuenta'   },
+  ];
+  return (
+    <>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      {SCREENS[tab]}
+      <nav className="bottom-nav">
+        {NAV.map(({ key, icon, label }) => (
+          <div key={key} className={`nav-item ${tab === key ? 'active' : ''}`} onClick={() => setTab(key)}>
+            <span className="nav-icon">{icon}</span>
+            <span className="nav-label">{label}</span>
+          </div>
+        ))}
+      </nav>
+    </>
+  );
+};
+
+// ── ACCOUNT SCREEN ────────────────────────────────────────────────────────────
+const AccountScreen = ({ user, onLogout }) => {
+  const [syncing, setSyncing] = useState(false);
+  const [msg, setMsg]         = useState('');
+
+  const forceSync = async () => {
+    setSyncing(true); setMsg('');
+    try {
+      await DB.syncDown();
+      setMsg('✓ Datos sincronizados correctamente');
+    } catch(e) { setMsg('Error al sincronizar'); }
+    setSyncing(false);
+  };
+
+  return (
+    <div className="screen fade-in">
+      <div className="topbar">
+        <div className="topbar-title"><h2>Mi Cuenta</h2></div>
+      </div>
+      <div className="content">
+        <div className="card">
+          <div className="text-xs text-muted2" style={{ marginBottom: 4 }}>Conectado como</div>
+          <div className="fw-700">{user.email}</div>
+          <div className="text-xs text-muted2" style={{ marginTop: 4 }}>ID: {user.id.slice(0,8)}…</div>
+        </div>
+
+        <div className="card">
+          <div className="fw-700" style={{ marginBottom: 6 }}>☁️ Sincronización</div>
+          <div className="text-xs text-muted2" style={{ marginBottom: 12 }}>Tus datos se sincronizan automáticamente. Si notas discrepancias entre dispositivos, fuerza la sincronización.</div>
+          <button className="btn btn-ghost btn-full" onClick={forceSync} disabled={syncing}>
+            {syncing ? 'Sincronizando…' : '🔄 Forzar sincronización'}
+          </button>
+          {msg && <div style={{ marginTop: 10, fontSize: '0.8rem', color: msg.startsWith('✓') ? 'var(--accent4)' : 'var(--danger)' }}>{msg}</div>}
+        </div>
+
+        <div className="card">
+          <div className="fw-700" style={{ marginBottom: 6 }}>📱 Cómo usar en iPhone</div>
+          <div className="text-xs text-muted2" style={{ lineHeight: 1.7 }}>
+            1. Abre esta URL en Safari<br/>
+            2. Toca el botón compartir (□↑)<br/>
+            3. Selecciona "Añadir a pantalla de inicio"<br/>
+            4. Inicia sesión con tu cuenta<br/>
+            ✓ Los datos se sincronizan con el PC automáticamente
+          </div>
+        </div>
+
+        <button className="btn btn-danger btn-full" onClick={onLogout}>Cerrar sesión</button>
+      </div>
+    </div>
+  );
+};
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
