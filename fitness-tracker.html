@@ -158,6 +158,26 @@
   .fade-in { animation: fadeIn 0.25s ease; }
   @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
   .slide-up { animation: slideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+  /* TIMER */
+  .timer-display { font-family: 'Space Mono', monospace; font-size: 3rem; font-weight: 700; text-align: center; letter-spacing: 0.05em; line-height: 1; }
+  .timer-ring { width: 140px; height: 140px; margin: 0 auto; position: relative; }
+  .timer-ring svg { transform: rotate(-90deg); }
+  .timer-ring-bg { fill: none; stroke: var(--surface3); stroke-width: 8; }
+  .timer-ring-fill { fill: none; stroke-width: 8; stroke-linecap: round; transition: stroke-dashoffset 0.5s linear; }
+
+  /* MEAL SECTIONS */
+  .meal-section { border-left: 3px solid var(--border); padding-left: 12px; }
+  .meal-section.has-items { border-left-color: var(--accent4); }
+
+  /* PHOTO GRID */
+  .photo-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+  .photo-thumb { aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: var(--surface2); border: 1px solid var(--border); cursor: pointer; position: relative; }
+  .photo-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .photo-thumb .photo-delete { position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.7); border: none; color: white; border-radius: 50%; width: 22px; height: 22px; font-size: 0.65rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+  /* KEEP-ALIVE BANNER */
+  .keepalive-bar { background: rgba(110,231,247,0.08); border-bottom: 1px solid rgba(110,231,247,0.15); padding: 6px 16px; display: flex; align-items: center; gap: 8px; font-size: 0.75rem; color: var(--accent); }
 </style>
 </head>
 <body>
@@ -388,6 +408,98 @@ const Modal = ({ open, onClose, title, children }) => {
   );
 };
 
+// ── REST TIMER ────────────────────────────────────────────────────────────────
+const TIMER_PRESETS = [60, 90, 120, 180, 240];
+const RestTimer = ({ onClose }) => {
+  const [total,   setTotal]   = useState(90);
+  const [left,    setLeft]    = useState(90);
+  const [running, setRunning] = useState(false);
+  const [done,    setDone]    = useState(false);
+  const intervalRef = useRef(null);
+
+  const start = (secs) => {
+    setTotal(secs); setLeft(secs); setRunning(true); setDone(false);
+  };
+  const toggle = () => {
+    if (done) { setLeft(total); setDone(false); setRunning(true); return; }
+    setRunning(r => !r);
+  };
+  const reset = () => { clearInterval(intervalRef.current); setLeft(total); setRunning(false); setDone(false); };
+
+  useEffect(() => {
+    if (running) {
+      intervalRef.current = setInterval(() => {
+        setLeft(l => {
+          if (l <= 1) {
+            clearInterval(intervalRef.current);
+            setRunning(false); setDone(true);
+            // Vibrate if supported
+            if (navigator.vibrate) navigator.vibrate([300, 100, 300, 100, 300]);
+            // Beep
+            try {
+              const ctx = new (window.AudioContext || window.webkitAudioContext)();
+              [0, 0.35, 0.7].forEach(t => {
+                const o = ctx.createOscillator(); const g = ctx.createGain();
+                o.connect(g); g.connect(ctx.destination);
+                o.frequency.value = 880; g.gain.setValueAtTime(0.3, ctx.currentTime + t);
+                g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.3);
+                o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + 0.3);
+              });
+            } catch(e) {}
+            return 0;
+          }
+          return l - 1;
+        });
+      }, 1000);
+    } else clearInterval(intervalRef.current);
+    return () => clearInterval(intervalRef.current);
+  }, [running]);
+
+  const pct     = total > 0 ? (left / total) : 0;
+  const r       = 60;
+  const circ    = 2 * Math.PI * r;
+  const offset  = circ * (1 - pct);
+  const mins    = String(Math.floor(left / 60)).padStart(2, '0');
+  const secs    = String(left % 60).padStart(2, '0');
+  const color   = done ? 'var(--accent4)' : left < 10 ? 'var(--danger)' : 'var(--accent)';
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 20, padding: '8px 0' }}>
+      {/* Ring */}
+      <div className="timer-ring">
+        <svg width="140" height="140" viewBox="0 0 140 140">
+          <circle className="timer-ring-bg" cx="70" cy="70" r={r} />
+          <circle className="timer-ring-fill" cx="70" cy="70" r={r}
+            stroke={color}
+            strokeDasharray={circ}
+            strokeDashoffset={offset}
+          />
+        </svg>
+        <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="timer-display" style={{ color, fontSize: '2.2rem' }}>{mins}:{secs}</div>
+          {done && <div className="text-xs text-green fw-700" style={{ marginTop: 2 }}>¡Listo!</div>}
+        </div>
+      </div>
+      {/* Presets */}
+      <div className="row" style={{ gap: 8, flexWrap: 'wrap', justifyContent: 'center' }}>
+        {TIMER_PRESETS.map(s => (
+          <button key={s} className={`btn btn-ghost btn-sm mono`} style={{ minWidth: 48, borderColor: total === s && (running||done) ? color : undefined, color: total === s && (running||done) ? color : undefined }} onClick={() => start(s)}>
+            {s >= 60 ? `${s/60}'` : `${s}"`}
+          </button>
+        ))}
+      </div>
+      {/* Controls */}
+      <div className="row" style={{ gap: 12 }}>
+        <button className="btn btn-ghost" onClick={reset}>↺ Reset</button>
+        <button className="btn btn-primary" style={{ minWidth: 100 }} onClick={toggle}>
+          {done ? '↺ Repetir' : running ? '⏸ Pausar' : '▶ Iniciar'}
+        </button>
+      </div>
+      <button className="btn btn-ghost btn-sm" onClick={onClose}>Cerrar temporizador</button>
+    </div>
+  );
+};
+
 // ── SCREEN: ENTRENAMIENTO ─────────────────────────────────────────────────────
 const WorkoutScreen = () => {
   const today = new Date();
@@ -397,8 +509,12 @@ const WorkoutScreen = () => {
   const [workouts, setWorkouts] = useState(initWorkouts);
   const [view, setView] = useState('calendar'); // calendar | day | log | routines | editRoutine
   const [editRoutine, setEditRoutine] = useState(null);
-  const [activeWorkout, setActiveWorkout] = useState(null);
+  const [activeWorkout, setActiveWorkout] = useState(() => {
+    // Restore interrupted session from localStorage
+    return CACHE.get('activeSession', null);
+  });
   const [newExName, setNewExName] = useState('');
+  const [showTimer, setShowTimer] = useState(false);
   const [exerciseUnits, setExerciseUnits] = useState(initExerciseUnits);
   // Read nutrition + goals for calendar indicators (read-only here)
   const nutritionData = useMemo(() => initNutrition(), []);
@@ -408,9 +524,12 @@ const WorkoutScreen = () => {
   const getNutriStatus = useCallback((ds) => {
     const raw = nutritionData[ds];
     if (!raw) return null;
+    // Support both meal-keyed and old category-keyed data
+    const mealKeys = ['desayuno','almuerzo','once','cena','snack'];
+    const catKeys  = ['carbos','proteinas','lacteos','grasas','verduras','snacks','bebidas','otros'];
     const allItems = [
-      ...FOOD_CATEGORIES.flatMap(c => raw[c.key] || []),
-      ...['desayuno','almuerzo','cena'].flatMap(k => raw[k] || []),
+      ...mealKeys.flatMap(k => raw[k] || []),
+      ...catKeys.flatMap(k => raw[k] || []),
     ];
     if (allItems.length === 0) return null;
     const totalCal  = allItems.reduce((a, i) => a + (i.calories || 0), 0);
@@ -420,6 +539,16 @@ const WorkoutScreen = () => {
       prot: goals.protein  > 0 ? totalProt >= goals.protein  * 0.9 : null,
     };
   }, [nutritionData, goals]);
+
+  // Persist active session so it survives app switching on mobile
+  useEffect(() => {
+    if (activeWorkout) {
+      CACHE.set('activeSession', activeWorkout);
+      setView('log');
+    } else {
+      CACHE.set('activeSession', null);
+    }
+  }, [activeWorkout]);
 
   const saveRoutines = (r) => { setRoutines(r); DB.set('routines', r); };
   const saveWorkouts = (w) => {
@@ -526,18 +655,16 @@ const WorkoutScreen = () => {
   };
 
   const saveWorkout = () => {
-    // Convert all weights to kg for storage regardless of display unit
     const normalizedSets = {};
     Object.entries(activeWorkout.sets).forEach(([ex, sets]) => {
-      normalizedSets[ex] = sets.map(s => ({
-        ...s,
-        weight: toKgForStorage(ex, s.weight),
-      }));
+      normalizedSets[ex] = sets.map(s => ({ ...s, weight: toKgForStorage(ex, s.weight) }));
     });
     const updated = { ...workouts, [selectedDate]: { routineId: activeWorkout.routineId, routineName: activeWorkout.routineName, sets: normalizedSets, date: selectedDate } };
     saveWorkouts(updated);
+    CACHE.set('activeSession', null);
     setView('day');
     setActiveWorkout(null);
+    setShowTimer(false);
   };
 
   // Routine editor
@@ -562,14 +689,24 @@ const WorkoutScreen = () => {
   if (view === 'log' && activeWorkout) {
     return (
       <div className="screen fade-in">
+        <div className="keepalive-bar">
+          <span>⚡</span>
+          <span>Sesión activa — puedes salir y volver sin perder datos</span>
+        </div>
         <div className="topbar">
-          <button className="btn-icon" onClick={() => { setView('day'); setActiveWorkout(null); }}>←</button>
+          <button className="btn-icon" onClick={() => setView('day')}>←</button>
           <div className="topbar-title">
             <div className="text-xs text-muted">Entrenando</div>
             <h2>{activeWorkout.routineName}</h2>
           </div>
+          <button className="btn-icon" onClick={() => setShowTimer(t => !t)} title="Temporizador de descanso" style={{ color: showTimer ? 'var(--accent)' : undefined }}>⏱</button>
           <button className="btn btn-primary btn-sm" onClick={saveWorkout}>Guardar</button>
         </div>
+        {showTimer && (
+          <div className="card" style={{ margin: '12px 16px 0', borderColor: 'rgba(110,231,247,0.3)' }}>
+            <RestTimer onClose={() => setShowTimer(false)} />
+          </div>
+        )}
         <div className="content">
           {activeWorkout.exercises.map(ex => {
             const last = getLastSession(ex);
@@ -909,35 +1046,42 @@ const WorkoutScreen = () => {
 
 // ── SCREEN: NUTRICIÓN ─────────────────────────────────────────────────────────
 
-// Categories definition — each food in the DB belongs to one of these
 const FOOD_CATEGORIES = [
-  { key: 'carbos',    label: 'Carbohidratos', icon: '🌾', color: 'var(--accent)',  badge: 'badge-accent',  desc: 'Arroz, pasta, pan, avena, frutas…' },
-  { key: 'proteinas', label: 'Proteínas',     icon: '🥩', color: 'var(--accent2)', badge: 'badge-purple',  desc: 'Pollo, huevo, carne, legumbres…' },
-  { key: 'lacteos',   label: 'Lácteos',       icon: '🥛', color: '#67e8f9',        badge: 'badge-accent',  desc: 'Leche, yogur, queso, requesón…' },
-  { key: 'grasas',    label: 'Grasas',        icon: '🥑', color: 'var(--accent3)', badge: 'badge-pink',    desc: 'Aceite, frutos secos, palta, mantequilla…' },
-  { key: 'verduras',  label: 'Verduras',      icon: '🥦', color: 'var(--accent4)', badge: 'badge-green',   desc: 'Brócoli, espinaca, tomate, pepino…' },
-  { key: 'snacks',    label: 'Snacks',        icon: '🍪', color: 'var(--warn)',     badge: '',              desc: 'Galletas, barras, golosinas…' },
-  { key: 'bebidas',   label: 'Bebidas',       icon: '🧃', color: '#a5f3fc',        badge: '',              desc: 'Jugos, batidos, bebidas deportivas…' },
-  { key: 'otros',     label: 'Otros',         icon: '🍽️', color: 'var(--text2)',   badge: '',              desc: 'Salsas, condimentos, suplementos…' },
+  { key: 'carbos',    label: 'Carbohidratos', icon: '🌾', color: 'var(--accent)',  desc: 'Arroz, pasta, pan, avena, frutas…' },
+  { key: 'proteinas', label: 'Proteínas',     icon: '🥩', color: 'var(--accent2)', desc: 'Pollo, huevo, carne, legumbres…' },
+  { key: 'lacteos',   label: 'Lácteos',       icon: '🥛', color: '#67e8f9',        desc: 'Leche, yogur, queso, requesón…' },
+  { key: 'grasas',    label: 'Grasas',        icon: '🥑', color: 'var(--accent3)', desc: 'Aceite, frutos secos, palta, mantequilla…' },
+  { key: 'verduras',  label: 'Verduras',      icon: '🥦', color: 'var(--accent4)', desc: 'Brócoli, espinaca, tomate, pepino…' },
+  { key: 'snacks',    label: 'Snacks',        icon: '🍪', color: 'var(--warn)',     desc: 'Galletas, barras, golosinas…' },
+  { key: 'bebidas',   label: 'Bebidas',       icon: '🧃', color: '#a5f3fc',        desc: 'Jugos, batidos, bebidas deportivas…' },
+  { key: 'otros',     label: 'Otros',         icon: '🍽️', color: 'var(--text2)',   desc: 'Salsas, condimentos, suplementos…' },
 ];
 const CAT_MAP = Object.fromEntries(FOOD_CATEGORIES.map(c => [c.key, c]));
-const EMPTY_DAY_DATA = () => Object.fromEntries(FOOD_CATEGORIES.map(c => [c.key, []]));
 
-// Migrate old nutrition data keys (desayuno/almuerzo/cena → otros) silently
+// Meals — what the user logs daily (time-based)
+const MEALS = [
+  { key: 'desayuno', label: 'Desayuno', icon: '🌅', color: '#fbbf24' },
+  { key: 'almuerzo', label: 'Almuerzo', icon: '☀️',  color: 'var(--accent)' },
+  { key: 'once',     label: 'Once',     icon: '🫖', color: '#c4b5fd' },
+  { key: 'cena',     label: 'Cena',     icon: '🌙', color: 'var(--accent2)' },
+  { key: 'snack',    label: 'Snack',    icon: '🍎', color: 'var(--accent4)' },
+];
+const MEAL_MAP = Object.fromEntries(MEALS.map(m => [m.key, m]));
+const EMPTY_DAY_NUTRI = () => Object.fromEntries(MEALS.map(m => [m.key, []]));
+
+// Migrate old data: category-keyed → 'otros' meal bucket
 const migrateNutritionData = (data) => {
-  const OLD_KEYS = ['desayuno', 'almuerzo', 'cena'];
+  const OLD_CAT_KEYS = ['carbos','proteinas','lacteos','grasas','verduras','snacks','bebidas','otros'];
+  const OLD_MEAL_KEYS = ['desayuno','almuerzo','cena']; // from very first version
   const migrated = {};
-  Object.entries(data).forEach(([date, dayRaw]) => {
-    const day = EMPTY_DAY_DATA();
-    // Copy existing category keys
-    FOOD_CATEGORIES.forEach(c => { if (dayRaw[c.key]) day[c.key] = dayRaw[c.key]; });
-    // Migrate old meal keys into 'otros'
-    OLD_KEYS.forEach(oldKey => {
-      if (dayRaw[oldKey] && dayRaw[oldKey].length > 0) {
-        day.otros = [...day.otros, ...dayRaw[oldKey]];
-      }
-    });
-    // Migrate old 'snacks' key (same name, keep as-is — already handled above)
+  Object.entries(data).forEach(([date, raw]) => {
+    const day = EMPTY_DAY_NUTRI();
+    // Already meal-keyed → copy
+    MEALS.forEach(m => { if (raw[m.key]) day[m.key] = raw[m.key]; });
+    // Old category keys → dump into 'otros' meal
+    OLD_CAT_KEYS.forEach(k => { if (raw[k]?.length) day.otros = [...(day.otros||[]), ...raw[k]]; });
+    // Old meal keys from v1
+    OLD_MEAL_KEYS.forEach(k => { if (raw[k]?.length && !MEAL_MAP[k]) day.otros = [...(day.otros||[]), ...raw[k]]; });
     migrated[date] = day;
   });
   return migrated;
@@ -945,56 +1089,46 @@ const migrateNutritionData = (data) => {
 
 const NutritionScreen = () => {
   const [selectedDate, setSelectedDate] = useState(todayStr());
-  const [foods, setFoods] = useState(initFoods);
-  const [nutrition, setNutrition] = useState(() => {
-    const raw = initNutrition();
-    return migrateNutritionData(raw);
-  });
-  const [goals, setGoals] = useState(initGoals);
-  const [view, setView] = useState('day'); // day | foods | addFood
-  const [editFood, setEditFood] = useState(null);
-  const [addingCategory, setAddingCategory] = useState(null);
-  const [modalOpen, setModalOpen] = useState(false);
+  const [foods, setFoods]     = useState(initFoods);
+  const [nutrition, setNutrition] = useState(() => migrateNutritionData(initNutrition()));
+  const [goals, setGoals]     = useState(initGoals);
+  const [view, setView]       = useState('day'); // day | foods | addFood
+  const [editFood, setEditFood]   = useState(null);
+  const [addingMeal, setAddingMeal] = useState(null);
+  const [modalOpen, setModalOpen]   = useState(false);
   const [goalsModal, setGoalsModal] = useState(false);
-  const [tempGoals, setTempGoals] = useState(goals);
-  const [selFood, setSelFood] = useState(null);
-  const [selQty, setSelQty] = useState('1');
+  const [tempGoals, setTempGoals]   = useState(goals);
+  const [selFood, setSelFood]   = useState(null);
+  const [selQty, setSelQty]     = useState('1');
   const [foodSearch, setFoodSearch] = useState('');
-  // addFood form
   const blankForm = { name: '', category: 'proteinas', unit: 'g', calories: '', protein: '', carbs: '', fat: '' };
   const [foodForm, setFoodForm] = useState(blankForm);
 
   const saveFoods = (f) => { setFoods(f); DB.set('foods', f); };
   const saveNutrition = (n) => {
     setNutrition(n);
-    // Find which date changed and persist it
     Object.entries(n).forEach(([date, data]) => DB.setNutritionDay(date, data));
   };
   const saveGoals = (g) => { setGoals(g); DB.set('goals', g); };
 
-  const dayData = nutrition[selectedDate] || EMPTY_DAY_DATA();
+  const dayData = nutrition[selectedDate] || EMPTY_DAY_NUTRI();
 
-  const calcMacros = (items) => items.reduce((acc, item) => ({
+  const calcMacros = (items) => (items||[]).reduce((acc, item) => ({
     calories: acc.calories + (item.calories || 0),
-    protein: acc.protein + (item.protein || 0),
-    carbs: acc.carbs + (item.carbs || 0),
-    fat: acc.fat + (item.fat || 0),
+    protein:  acc.protein  + (item.protein  || 0),
+    carbs:    acc.carbs    + (item.carbs    || 0),
+    fat:      acc.fat      + (item.fat      || 0),
   }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
 
-  const allItems = FOOD_CATEGORIES.flatMap(c => dayData[c.key] || []);
-  const totals = calcMacros(allItems);
+  const allItems = MEALS.flatMap(m => dayData[m.key] || []);
+  const totals   = calcMacros(allItems);
 
-  const openAddFood = (catKey) => {
-    setAddingCategory(catKey);
-    setSelFood(null);
-    setSelQty('1');
-    setFoodSearch('');
-    setModalOpen(true);
+  const openAddFood = (mealKey) => {
+    setAddingMeal(mealKey); setSelFood(null); setSelQty('1'); setFoodSearch(''); setModalOpen(true);
   };
-
   const confirmAddFood = () => {
-    if (!selFood || !selQty) return;
-    const qty = parseFloat(selQty) || 1;
+    if (!selFood) return;
+    const qty  = parseFloat(selQty) || 1;
     const item = {
       id: uid(), foodId: selFood.id, name: selFood.name, unit: selFood.unit, qty,
       calories: +(selFood.calories * qty).toFixed(1),
@@ -1002,47 +1136,32 @@ const NutritionScreen = () => {
       carbs:    +(selFood.carbs    * qty).toFixed(1),
       fat:      +(selFood.fat      * qty).toFixed(1),
     };
-    const cat = addingCategory;
-    const updated = { ...dayData, [cat]: [...(dayData[cat] || []), item] };
+    const updated = { ...dayData, [addingMeal]: [...(dayData[addingMeal]||[]), item] };
     saveNutrition({ ...nutrition, [selectedDate]: updated });
     setModalOpen(false);
   };
-
-  const removeItem = (catKey, id) => {
-    const updated = { ...dayData, [catKey]: (dayData[catKey] || []).filter(i => i.id !== id) };
+  const removeItem = (mealKey, id) => {
+    const updated = { ...dayData, [mealKey]: (dayData[mealKey]||[]).filter(i => i.id !== id) };
     saveNutrition({ ...nutrition, [selectedDate]: updated });
   };
 
-  // Foods filtered by the category being added (show all if searching)
   const filteredFoods = useMemo(() => {
     const q = foodSearch.trim().toLowerCase();
     if (q) return foods.filter(f => f.name.toLowerCase().includes(q));
-    // Default: show foods whose stored category matches the target category, then rest
-    const catFoods = foods.filter(f => (f.category || 'otros') === addingCategory);
-    const otherFoods = foods.filter(f => (f.category || 'otros') !== addingCategory);
-    return [...catFoods, ...otherFoods];
-  }, [foods, addingCategory, foodSearch]);
+    return foods;
+  }, [foods, foodSearch]);
 
   const saveFood = () => {
     if (!foodForm.name.trim()) return;
-    const f = {
-      id: editFood?.id || uid(),
-      name: foodForm.name,
-      category: foodForm.category,
-      unit: foodForm.unit,
-      calories: parseFloat(foodForm.calories)||0,
-      protein:  parseFloat(foodForm.protein)||0,
-      carbs:    parseFloat(foodForm.carbs)||0,
-      fat:      parseFloat(foodForm.fat)||0,
-    };
+    const f = { id: editFood?.id || uid(), name: foodForm.name, category: foodForm.category, unit: foodForm.unit,
+      calories: parseFloat(foodForm.calories)||0, protein: parseFloat(foodForm.protein)||0,
+      carbs: parseFloat(foodForm.carbs)||0, fat: parseFloat(foodForm.fat)||0 };
     if (editFood) saveFoods(foods.map(x => x.id === editFood.id ? f : x));
     else saveFoods([...foods, f]);
-    setView('foods');
-    setEditFood(null);
-    setFoodForm(blankForm);
+    setView('foods'); setEditFood(null); setFoodForm(blankForm);
   };
 
-  // ── VIEW: ADD/EDIT FOOD ────────────────────────────────────────────────────
+  // ── VIEW: ADD/EDIT FOOD ──────────────────────────────────────────────────
   if (view === 'addFood') {
     return (
       <div className="screen fade-in">
@@ -1052,43 +1171,30 @@ const NutritionScreen = () => {
           <button className="btn btn-primary btn-sm" onClick={saveFood}>Guardar</button>
         </div>
         <div className="content">
-          <div>
-            <div className="label">Nombre</div>
-            <input className="input" type="text" value={foodForm.name} onChange={e => setFoodForm(f => ({ ...f, name: e.target.value }))} placeholder="Ej: Pechuga de pollo" />
-          </div>
-          <div>
-            <div className="label">Categoría</div>
+          <div><div className="label">Nombre</div>
+            <input className="input" type="text" value={foodForm.name} onChange={e => setFoodForm(f => ({ ...f, name: e.target.value }))} placeholder="Ej: Pechuga de pollo" /></div>
+          <div><div className="label">Categoría (para organizar tu DB)</div>
             <select className="input" value={foodForm.category} onChange={e => setFoodForm(f => ({ ...f, category: e.target.value }))}>
-              {FOOD_CATEGORIES.map(c => (
-                <option key={c.key} value={c.key}>{c.icon} {c.label}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <div className="label">Unidad de medida</div>
-            <input className="input" type="text" value={foodForm.unit} onChange={e => setFoodForm(f => ({ ...f, unit: e.target.value }))} placeholder="gramo, taza, unidad, cucharada…" />
-          </div>
+              {FOOD_CATEGORIES.map(c => <option key={c.key} value={c.key}>{c.icon} {c.label}</option>)}
+            </select></div>
+          <div><div className="label">Unidad de medida</div>
+            <input className="input" type="text" value={foodForm.unit} onChange={e => setFoodForm(f => ({ ...f, unit: e.target.value }))} placeholder="gramo, taza, unidad…" /></div>
           <div className="divider" />
-          <div className="text-xs text-muted2">Valores nutricionales por 1 {foodForm.unit || 'unidad'}</div>
+          <div className="text-xs text-muted2">Valores por 1 {foodForm.unit || 'unidad'}</div>
           {[['calories','Calorías (kcal)'],['protein','Proteína (g)'],['carbs','Carbohidratos (g)'],['fat','Grasas (g)']].map(([field, label]) => (
-            <div key={field}>
-              <div className="label">{label}</div>
-              <input className="input" type="number" inputMode="decimal" placeholder="0" value={foodForm[field]} onChange={e => setFoodForm(f => ({ ...f, [field]: e.target.value }))} />
-            </div>
+            <div key={field}><div className="label">{label}</div>
+              <input className="input" type="number" inputMode="decimal" placeholder="0" value={foodForm[field]} onChange={e => setFoodForm(f => ({ ...f, [field]: e.target.value }))} /></div>
           ))}
         </div>
       </div>
     );
   }
 
-  // ── VIEW: FOOD DATABASE ────────────────────────────────────────────────────
+  // ── VIEW: FOOD DATABASE ──────────────────────────────────────────────────
   if (view === 'foods') {
-    // Group foods by category for display
     const grouped = FOOD_CATEGORIES.map(cat => ({
-      ...cat,
-      items: foods.filter(f => (f.category || 'otros') === cat.key),
+      ...cat, items: foods.filter(f => (f.category||'otros') === cat.key),
     })).filter(g => g.items.length > 0);
-
     return (
       <div className="screen fade-in">
         <div className="topbar">
@@ -1097,27 +1203,22 @@ const NutritionScreen = () => {
           <button className="btn btn-primary btn-sm" onClick={() => { setEditFood(null); setFoodForm(blankForm); setView('addFood'); }}>+ Nuevo</button>
         </div>
         <div className="content">
-          {foods.length === 0 && <div className="empty-state"><div className="empty-icon">🥗</div><div className="empty-text">Sin alimentos registrados</div></div>}
+          {foods.length === 0 && <div className="empty-state"><div className="empty-icon">🥗</div><div className="empty-text">Sin alimentos</div></div>}
           {grouped.map(g => (
             <div key={g.key}>
               <div className="row" style={{ gap: 8, marginBottom: 8 }}>
-                <span>{g.icon}</span>
-                <span className="label" style={{ color: g.color }}>{g.label}</span>
+                <span>{g.icon}</span><span className="label" style={{ color: g.color }}>{g.label}</span>
               </div>
               {g.items.map(f => (
                 <div key={f.id} className="card-sm" style={{ marginBottom: 8 }}>
                   <div className="row-between" style={{ marginBottom: 4 }}>
                     <div className="fw-700 text-sm">{f.name}</div>
                     <div className="row" style={{ gap: 6 }}>
-                      <button className="btn btn-ghost btn-sm" onClick={() => {
-                        setEditFood(f);
-                        setFoodForm({ name: f.name, category: f.category || 'otros', unit: f.unit, calories: String(f.calories), protein: String(f.protein), carbs: String(f.carbs), fat: String(f.fat) });
-                        setView('addFood');
-                      }}>✏️</button>
+                      <button className="btn btn-ghost btn-sm" onClick={() => { setEditFood(f); setFoodForm({ name: f.name, category: f.category||'otros', unit: f.unit, calories: String(f.calories), protein: String(f.protein), carbs: String(f.carbs), fat: String(f.fat) }); setView('addFood'); }}>✏️</button>
                       <button className="btn btn-danger btn-sm" onClick={() => { if(confirm('¿Eliminar?')) saveFoods(foods.filter(x => x.id !== f.id)); }}>🗑</button>
                     </div>
                   </div>
-                  <div className="text-xs text-muted2">por 1 {f.unit} — {f.calories} kcal · P:{f.protein}g · C:{f.carbs}g · G:{f.fat}g</div>
+                  <div className="text-xs text-muted2">1 {f.unit} — {f.calories} kcal · P:{f.protein}g · C:{f.carbs}g · G:{f.fat}g</div>
                 </div>
               ))}
             </div>
@@ -1127,8 +1228,8 @@ const NutritionScreen = () => {
     );
   }
 
-  // ── VIEW: DAY ──────────────────────────────────────────────────────────────
-  const addingCat = CAT_MAP[addingCategory] || FOOD_CATEGORIES[0];
+  // ── VIEW: DAY ────────────────────────────────────────────────────────────
+  const addingMealObj = MEAL_MAP[addingMeal] || MEALS[0];
 
   return (
     <div className="screen fade-in">
@@ -1140,7 +1241,6 @@ const NutritionScreen = () => {
         </div>
       </div>
       <div className="content">
-
         {/* Date navigator */}
         <div className="row" style={{ gap: 8 }}>
           <button className="btn-icon" onClick={() => { const d = new Date(selectedDate+'T00:00:00'); d.setDate(d.getDate()-1); setSelectedDate(dateStr(d)); }}>‹</button>
@@ -1150,7 +1250,7 @@ const NutritionScreen = () => {
           <button className="btn-icon" onClick={() => { const d = new Date(selectedDate+'T00:00:00'); d.setDate(d.getDate()+1); setSelectedDate(dateStr(d)); }}>›</button>
         </div>
 
-        {/* Calorie summary */}
+        {/* Daily totals summary */}
         <div className="card">
           <div className="row-between" style={{ marginBottom: 12 }}>
             <div>
@@ -1174,25 +1274,27 @@ const NutritionScreen = () => {
           </div>
         </div>
 
-        {/* Category sections */}
-        {FOOD_CATEGORIES.map(cat => {
-          const items = dayData[cat.key] || [];
-          const catTotals = calcMacros(items);
+        {/* Meal sections */}
+        {MEALS.map(meal => {
+          const items   = dayData[meal.key] || [];
+          const mTotals = calcMacros(items);
           const hasItems = items.length > 0;
           return (
-            <div key={cat.key} className="card" style={{ borderLeft: `3px solid ${cat.color}` }}>
+            <div key={meal.key} className="card" style={{ borderLeft: `3px solid ${hasItems ? meal.color : 'var(--border)'}` }}>
               <div className="row-between" style={{ marginBottom: hasItems ? 10 : 0 }}>
                 <div className="row" style={{ gap: 8 }}>
-                  <span style={{ fontSize: '1.1rem' }}>{cat.icon}</span>
+                  <span style={{ fontSize: '1.1rem' }}>{meal.icon}</span>
                   <div>
-                    <div className="fw-700 text-sm" style={{ color: cat.color }}>{cat.label}</div>
+                    <div className="fw-700 text-sm" style={{ color: hasItems ? meal.color : 'var(--text2)' }}>{meal.label}</div>
                     {hasItems
-                      ? <div className="text-xs text-muted2 mono">{Math.round(catTotals.calories)} kcal · P:{catTotals.protein.toFixed(1)}g · C:{catTotals.carbs.toFixed(1)}g</div>
-                      : <div className="text-xs text-muted2">{cat.desc}</div>
+                      ? <div className="text-xs mono" style={{ color: 'var(--text3)' }}>
+                          {Math.round(mTotals.calories)} kcal · P:{mTotals.protein.toFixed(1)}g · C:{mTotals.carbs.toFixed(1)}g · G:{mTotals.fat.toFixed(1)}g
+                        </div>
+                      : <div className="text-xs text-muted2">Sin registros</div>
                     }
                   </div>
                 </div>
-                <button className="btn btn-ghost btn-sm" onClick={() => openAddFood(cat.key)}>+ Añadir</button>
+                <button className="btn btn-ghost btn-sm" onClick={() => openAddFood(meal.key)}>+ Añadir</button>
               </div>
               {items.map(item => (
                 <div key={item.id} className="row-between" style={{ paddingTop: 8, borderTop: '1px solid var(--border)', marginTop: 4 }}>
@@ -1200,7 +1302,7 @@ const NutritionScreen = () => {
                     <div className="text-sm">{item.name}</div>
                     <div className="text-xs text-muted2">{item.qty} {item.unit} · <span className="mono">{item.calories} kcal · P:{item.protein}g</span></div>
                   </div>
-                  <button className="btn-icon" style={{ fontSize: '0.7rem', padding: '6px' }} onClick={() => removeItem(cat.key, item.id)}>✕</button>
+                  <button className="btn-icon" style={{ fontSize: '0.7rem', padding: '6px' }} onClick={() => removeItem(meal.key, item.id)}>✕</button>
                 </div>
               ))}
             </div>
@@ -1209,56 +1311,46 @@ const NutritionScreen = () => {
       </div>
 
       {/* Add food modal */}
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={`${addingCat.icon} ${addingCat.label}`}>
+      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={`${addingMealObj.icon} ${addingMealObj.label}`}>
         <div className="col" style={{ gap: 12 }}>
           {!selFood ? (
             <>
-              <input
-                className="input"
-                placeholder="Buscar alimento…"
-                value={foodSearch}
-                onChange={e => setFoodSearch(e.target.value)}
-                autoFocus
-              />
+              <input className="input" placeholder="Buscar alimento…" value={foodSearch} onChange={e => setFoodSearch(e.target.value)} autoFocus />
               {filteredFoods.length === 0 && (
                 <div className="empty-state" style={{ padding: '20px 0' }}>
-                  <div className="empty-text text-muted2">No encontrado. <button className="btn btn-ghost btn-sm" style={{ display: 'inline-flex', marginLeft: 4 }} onClick={() => { setModalOpen(false); setFoodForm({ ...blankForm, category: addingCategory, name: foodSearch }); setView('addFood'); }}>+ Crear</button></div>
+                  <div className="empty-text text-muted2">No encontrado.
+                    <button className="btn btn-ghost btn-sm" style={{ display: 'inline-flex', marginLeft: 4 }} onClick={() => { setModalOpen(false); setFoodForm({ ...blankForm, name: foodSearch }); setView('addFood'); }}>+ Crear</button>
+                  </div>
                 </div>
               )}
               <div style={{ maxHeight: '55vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {filteredFoods.map(f => {
-                  const fCat = CAT_MAP[f.category || 'otros'];
+                  const fCat = CAT_MAP[f.category||'otros'];
                   return (
                     <button key={f.id} className="card-sm" style={{ cursor: 'pointer', textAlign: 'left', border: '1px solid var(--border)' }} onClick={() => { setSelFood(f); setSelQty('1'); }}>
                       <div className="row-between">
                         <div className="fw-700 text-sm">{f.name}</div>
-                        <span className="text-xs" style={{ color: fCat?.color || 'var(--text3)' }}>{fCat?.icon}</span>
+                        <span className="text-xs" style={{ color: fCat?.color||'var(--text3)' }}>{fCat?.icon}</span>
                       </div>
-                      <div className="text-xs text-muted2">1 {f.unit} · {f.calories} kcal · P:{f.protein}g · C:{f.carbs}g</div>
+                      <div className="text-xs text-muted2">1 {f.unit} · {f.calories} kcal · P:{f.protein}g</div>
                     </button>
                   );
                 })}
               </div>
-              <button className="btn btn-ghost btn-sm btn-full" onClick={() => { setModalOpen(false); setFoodForm({ ...blankForm, category: addingCategory }); setView('addFood'); }}>
-                + Crear alimento nuevo
-              </button>
+              <button className="btn btn-ghost btn-sm btn-full" onClick={() => { setModalOpen(false); setFoodForm(blankForm); setView('addFood'); }}>+ Crear alimento nuevo</button>
             </>
           ) : (
             <>
-              <div className="card-sm" style={{ borderLeft: `3px solid ${addingCat.color}` }}>
+              <div className="card-sm" style={{ borderLeft: `3px solid ${addingMealObj.color}` }}>
                 <div className="fw-700">{selFood.name}</div>
                 <div className="text-xs text-muted2">por 1 {selFood.unit}: {selFood.calories} kcal · P:{selFood.protein}g · C:{selFood.carbs}g · G:{selFood.fat}g</div>
               </div>
-              <div>
-                <div className="label">Cantidad ({selFood.unit}s)</div>
-                <input className="input" type="number" inputMode="decimal" value={selQty} onChange={e => setSelQty(e.target.value)} autoFocus />
-              </div>
+              <div><div className="label">Cantidad ({selFood.unit}s)</div>
+                <input className="input" type="number" inputMode="decimal" value={selQty} onChange={e => setSelQty(e.target.value)} autoFocus /></div>
               <div className="highlight-row">
-                <div className="text-xs text-muted2">
-                  Total: <span className="mono" style={{ color: addingCat.color }}>
-                    {(selFood.calories * parseFloat(selQty||0)).toFixed(0)} kcal · P:{(selFood.protein * parseFloat(selQty||0)).toFixed(1)}g · C:{(selFood.carbs * parseFloat(selQty||0)).toFixed(1)}g · G:{(selFood.fat * parseFloat(selQty||0)).toFixed(1)}g
-                  </span>
-                </div>
+                <div className="text-xs text-muted2">Total: <span className="mono" style={{ color: addingMealObj.color }}>
+                  {(selFood.calories * parseFloat(selQty||0)).toFixed(0)} kcal · P:{(selFood.protein * parseFloat(selQty||0)).toFixed(1)}g · C:{(selFood.carbs * parseFloat(selQty||0)).toFixed(1)}g · G:{(selFood.fat * parseFloat(selQty||0)).toFixed(1)}g
+                </span></div>
               </div>
               <div className="row" style={{ gap: 8 }}>
                 <button className="btn btn-ghost" style={{ flex: 1 }} onClick={() => setSelFood(null)}>← Volver</button>
@@ -1273,12 +1365,10 @@ const NutritionScreen = () => {
       <Modal open={goalsModal} onClose={() => setGoalsModal(false)} title="🎯 Objetivos diarios">
         <div className="col" style={{ gap: 12 }}>
           {[['calories','Calorías (kcal)'],['protein','Proteína (g)'],['carbs','Carbohidratos (g)'],['fat','Grasas (g)']].map(([k, label]) => (
-            <div key={k}>
-              <div className="label">{label}</div>
-              <input className="input" type="number" inputMode="decimal" value={tempGoals[k]} onChange={e => setTempGoals(g => ({ ...g, [k]: parseFloat(e.target.value)||0 }))} />
-            </div>
+            <div key={k}><div className="label">{label}</div>
+              <input className="input" type="number" inputMode="decimal" value={tempGoals[k]} onChange={e => setTempGoals(g => ({ ...g, [k]: parseFloat(e.target.value)||0 }))} /></div>
           ))}
-          <button className="btn btn-primary btn-full" onClick={() => { saveGoals(tempGoals); setGoalsModal(false); }}>Guardar objetivos</button>
+          <button className="btn btn-primary btn-full" onClick={() => { saveGoals(tempGoals); setGoalsModal(false); }}>Guardar</button>
         </div>
       </Modal>
     </div>
@@ -1288,50 +1378,88 @@ const NutritionScreen = () => {
 // ── SCREEN: MÉTRICAS ─────────────────────────────────────────────────────────
 const MetricsScreen = () => {
   const [bodyMetrics, setBodyMetrics] = useState(initBodyMetrics);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [form, setForm] = useState({ date: todayStr(), weight: '', waist: '', chest: '', arm: '', leg: '' });
+  const [modalOpen, setModalOpen]   = useState(false);
+  const [photoModal, setPhotoModal] = useState(null); // full-screen photo
+  const blankForm = { date: todayStr(), weight: '', waist: '', chest: '', arm: '', leg: '', sleep: '', notes: '' };
+  const [form, setForm]   = useState(blankForm);
   const [editId, setEditId] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   const saveMetrics = (m) => { setBodyMetrics(m); DB.set('bodyMetrics', m); };
 
   const saveEntry = () => {
     if (!form.date) return;
-    const entry = { id: editId || uid(), ...form, weight: parseFloat(form.weight)||0, waist: parseFloat(form.waist)||0, chest: parseFloat(form.chest)||0, arm: parseFloat(form.arm)||0, leg: parseFloat(form.leg)||0 };
-    if (editId) saveMetrics(bodyMetrics.map(m => m.id === editId ? entry : m));
+    const entry = {
+      id: editId || uid(), ...form,
+      weight: parseFloat(form.weight)||0,
+      waist:  parseFloat(form.waist)||0,
+      chest:  parseFloat(form.chest)||0,
+      arm:    parseFloat(form.arm)||0,
+      leg:    parseFloat(form.leg)||0,
+      sleep:  parseFloat(form.sleep)||0,
+      photos: editId ? (bodyMetrics.find(m => m.id === editId)?.photos || []) : [],
+    };
+    if (editId) saveMetrics(bodyMetrics.map(m => m.id === editId ? { ...m, ...entry } : m));
     else saveMetrics([...bodyMetrics, entry].sort((a, b) => a.date.localeCompare(b.date)));
-    setModalOpen(false);
-    setEditId(null);
-    setForm({ date: todayStr(), weight: '', waist: '', chest: '', arm: '', leg: '' });
+    setModalOpen(false); setEditId(null); setForm(blankForm);
+  };
+
+  // Upload photo to Supabase Storage (base64 fallback if storage not configured)
+  const handlePhotoUpload = async (entryId, file) => {
+    setUploading(true);
+    try {
+      // Convert to base64 for local storage (works without Supabase Storage bucket)
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const base64 = e.target.result;
+        const updated = bodyMetrics.map(m => {
+          if (m.id !== entryId) return m;
+          return { ...m, photos: [...(m.photos||[]), { id: uid(), url: base64, date: new Date().toISOString() }] };
+        });
+        saveMetrics(updated);
+        setUploading(false);
+      };
+      reader.readAsDataURL(file);
+    } catch(e) { setUploading(false); }
+  };
+
+  const deletePhoto = (entryId, photoId) => {
+    const updated = bodyMetrics.map(m => {
+      if (m.id !== entryId) return m;
+      return { ...m, photos: (m.photos||[]).filter(p => p.id !== photoId) };
+    });
+    saveMetrics(updated);
   };
 
   const weightData = bodyMetrics.filter(m => m.weight > 0).map(m => ({ label: m.date.slice(5), value: m.weight }));
-  const latest = bodyMetrics[bodyMetrics.length - 1];
+  const sleepData  = bodyMetrics.filter(m => m.sleep  > 0).map(m => ({ label: m.date.slice(5), value: m.sleep  }));
+  const latest   = bodyMetrics[bodyMetrics.length - 1];
   const previous = bodyMetrics[bodyMetrics.length - 2];
 
   return (
     <div className="screen fade-in">
       <div className="topbar">
         <div className="topbar-title"><h2>Métricas Corporales</h2></div>
-        <button className="btn btn-primary btn-sm" onClick={() => { setEditId(null); setForm({ date: todayStr(), weight: '', waist: '', chest: '', arm: '', leg: '' }); setModalOpen(true); }}>+ Registrar</button>
+        <button className="btn btn-primary btn-sm" onClick={() => { setEditId(null); setForm(blankForm); setModalOpen(true); }}>+ Registrar</button>
       </div>
       <div className="content">
         {latest && (
           <div className="stat-grid">
             <div className="stat-box">
-              <div className="stat-value text-accent">{latest.weight} <span style={{ fontSize: '0.9rem' }}>kg</span></div>
+              <div className="stat-value text-accent">{latest.weight > 0 ? latest.weight : '—'} <span style={{ fontSize: '0.9rem' }}>{latest.weight > 0 ? 'kg' : ''}</span></div>
               <div className="stat-label">Peso actual</div>
-              {previous && previous.weight > 0 && (
+              {previous?.weight > 0 && latest.weight > 0 && (
                 <div className="text-xs" style={{ marginTop: 4, color: latest.weight < previous.weight ? 'var(--accent4)' : 'var(--danger)' }}>
                   {latest.weight < previous.weight ? '▼' : '▲'} {Math.abs(latest.weight - previous.weight).toFixed(1)}kg
                 </div>
               )}
             </div>
             <div className="stat-box">
-              <div className="stat-value text-purple">{bodyMetrics.length}</div>
-              <div className="stat-label">Registros</div>
+              <div className="stat-value text-purple">{latest.sleep > 0 ? latest.sleep : '—'} <span style={{ fontSize: '0.9rem' }}>{latest.sleep > 0 ? 'h' : ''}</span></div>
+              <div className="stat-label">Último sueño</div>
             </div>
             {latest.waist > 0 && <div className="stat-box"><div className="stat-value text-pink">{latest.waist}<span style={{ fontSize: '0.9rem' }}>cm</span></div><div className="stat-label">Cintura</div></div>}
-            {latest.arm > 0 && <div className="stat-box"><div className="stat-value text-green">{latest.arm}<span style={{ fontSize: '0.9rem' }}>cm</span></div><div className="stat-label">Brazo</div></div>}
+            {latest.arm   > 0 && <div className="stat-box"><div className="stat-value text-green">{latest.arm}<span style={{ fontSize: '0.9rem' }}>cm</span></div><div className="stat-label">Brazo</div></div>}
           </div>
         )}
 
@@ -1341,44 +1469,87 @@ const MetricsScreen = () => {
             <LineChartComp data={weightData} label="Peso" color="#6ee7f7" yLabel="kg" />
           </div>
         )}
+        {sleepData.length >= 2 && (
+          <div className="card">
+            <h3 style={{ marginBottom: 12 }}>😴 Horas de sueño</h3>
+            <LineChartComp data={sleepData} label="Sueño" color="#a78bfa" yLabel="h" />
+          </div>
+        )}
 
-        <div className="col" style={{ gap: 8 }}>
+        {/* History list */}
+        <div className="col" style={{ gap: 10 }}>
           {[...bodyMetrics].reverse().map(m => (
-            <div key={m.id} className="card-sm">
-              <div className="row-between">
+            <div key={m.id} className="card">
+              <div className="row-between" style={{ marginBottom: 8 }}>
                 <div>
                   <div className="text-xs text-muted2 mono">{fmtDate(m.date)}</div>
-                  <div className="fw-700 text-sm">{m.weight > 0 ? `${m.weight} kg` : '—'}</div>
-                  <div className="chip-row" style={{ marginTop: 4 }}>
-                    {m.waist > 0 && <span className="badge badge-pink">Cintura: {m.waist}cm</span>}
-                    {m.chest > 0 && <span className="badge badge-purple">Pecho: {m.chest}cm</span>}
-                    {m.arm > 0 && <span className="badge badge-green">Brazo: {m.arm}cm</span>}
-                    {m.leg > 0 && <span className="badge badge-accent">Pierna: {m.leg}cm</span>}
+                  <div className="row" style={{ gap: 10, marginTop: 4, flexWrap: 'wrap' }}>
+                    {m.weight > 0 && <span className="fw-700 text-sm">{m.weight} kg</span>}
+                    {m.sleep  > 0 && <span className="badge badge-purple">😴 {m.sleep}h</span>}
+                    {m.waist  > 0 && <span className="badge badge-pink">cintura {m.waist}cm</span>}
+                    {m.chest  > 0 && <span className="badge badge-purple">pecho {m.chest}cm</span>}
+                    {m.arm    > 0 && <span className="badge badge-green">brazo {m.arm}cm</span>}
+                    {m.leg    > 0 && <span className="badge badge-accent">pierna {m.leg}cm</span>}
                   </div>
+                  {m.notes?.trim() && <div className="text-xs text-muted2" style={{ marginTop: 4 }}>📝 {m.notes}</div>}
                 </div>
-                <div className="row" style={{ gap: 8 }}>
-                  <button className="btn btn-ghost btn-sm" onClick={() => { setEditId(m.id); setForm({ date: m.date, weight: String(m.weight||''), waist: String(m.waist||''), chest: String(m.chest||''), arm: String(m.arm||''), leg: String(m.leg||'') }); setModalOpen(true); }}>✏️</button>
+                <div className="row" style={{ gap: 6 }}>
+                  <button className="btn btn-ghost btn-sm" onClick={() => {
+                    setEditId(m.id);
+                    setForm({ date: m.date, weight: String(m.weight||''), waist: String(m.waist||''), chest: String(m.chest||''), arm: String(m.arm||''), leg: String(m.leg||''), sleep: String(m.sleep||''), notes: m.notes||'' });
+                    setModalOpen(true);
+                  }}>✏️</button>
                   <button className="btn btn-danger btn-sm" onClick={() => saveMetrics(bodyMetrics.filter(x => x.id !== m.id))}>🗑</button>
                 </div>
               </div>
+              {/* Photos */}
+              {(m.photos?.length > 0 || true) && (
+                <div>
+                  {m.photos?.length > 0 && (
+                    <div className="photo-grid" style={{ marginBottom: 8 }}>
+                      {m.photos.map(p => (
+                        <div key={p.id} className="photo-thumb" onClick={() => setPhotoModal(p.url)}>
+                          <img src={p.url} alt="progreso" />
+                          <button className="photo-delete" onClick={e => { e.stopPropagation(); if(confirm('¿Eliminar foto?')) deletePhoto(m.id, p.id); }}>✕</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <label className="btn btn-ghost btn-sm" style={{ cursor: 'pointer', display: 'inline-flex' }}>
+                    {uploading ? 'Subiendo…' : '📷 Añadir foto'}
+                    <input type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={e => { if(e.target.files[0]) handlePhotoUpload(m.id, e.target.files[0]); }} />
+                  </label>
+                </div>
+              )}
             </div>
           ))}
         </div>
-        {bodyMetrics.length === 0 && <div className="empty-state"><div className="empty-icon">⚖️</div><div className="empty-text">Registra tu primer peso</div></div>}
+        {bodyMetrics.length === 0 && <div className="empty-state"><div className="empty-icon">⚖️</div><div className="empty-text">Registra tu primer dato</div></div>}
       </div>
 
-      <Modal open={modalOpen} onClose={() => setModalOpen(false)} title={editId ? 'Editar registro' : 'Nuevo registro'}>
+      {/* Entry modal */}
+      <Modal open={modalOpen} onClose={() => { setModalOpen(false); setEditId(null); setForm(blankForm); }} title={editId ? 'Editar registro' : 'Nuevo registro'}>
         <div className="col" style={{ gap: 12 }}>
           <div><div className="label">Fecha</div><input className="input" type="date" value={form.date} onChange={e => setForm(f => ({ ...f, date: e.target.value }))} /></div>
           <div><div className="label">Peso corporal (kg)</div><input className="input" type="number" inputMode="decimal" placeholder="70.5" value={form.weight} onChange={e => setForm(f => ({ ...f, weight: e.target.value }))} /></div>
+          <div><div className="label">Horas de sueño</div><input className="input" type="number" inputMode="decimal" placeholder="8" value={form.sleep} onChange={e => setForm(f => ({ ...f, sleep: e.target.value }))} /></div>
           <div className="divider" />
           <div className="text-xs text-muted2">Medidas opcionales (cm)</div>
           {[['waist','Cintura'],['chest','Pecho'],['arm','Brazo'],['leg','Pierna']].map(([k, label]) => (
             <div key={k}><div className="label">{label}</div><input className="input" type="number" inputMode="decimal" placeholder="—" value={form[k]} onChange={e => setForm(f => ({ ...f, [k]: e.target.value }))} /></div>
           ))}
+          <div><div className="label">Notas (opcional)</div><input className="input" type="text" placeholder="Cómo te sentiste, etc." value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></div>
           <button className="btn btn-primary btn-full" onClick={saveEntry}>Guardar</button>
         </div>
       </Modal>
+
+      {/* Full-screen photo viewer */}
+      {photoModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.95)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setPhotoModal(null)}>
+          <img src={photoModal} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+          <button style={{ position: 'absolute', top: 20, right: 20, background: 'rgba(255,255,255,0.15)', border: 'none', color: 'white', borderRadius: '50%', width: 40, height: 40, fontSize: '1.2rem', cursor: 'pointer' }} onClick={() => setPhotoModal(null)}>✕</button>
+        </div>
+      )}
     </div>
   );
 };
