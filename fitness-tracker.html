@@ -408,6 +408,29 @@ const Modal = ({ open, onClose, title, children }) => {
   );
 };
 
+// ── NUTRITION CONSTANTS (used by WorkoutScreen calendar + NutritionScreen) ────
+const FOOD_CATEGORIES = [
+  { key: 'carbos',    label: 'Carbohidratos', icon: '🌾', color: 'var(--accent)',  desc: 'Arroz, pasta, pan, avena, frutas…' },
+  { key: 'proteinas', label: 'Proteínas',     icon: '🥩', color: 'var(--accent2)', desc: 'Pollo, huevo, carne, legumbres…' },
+  { key: 'lacteos',   label: 'Lácteos',       icon: '🥛', color: '#67e8f9',        desc: 'Leche, yogur, queso, requesón…' },
+  { key: 'grasas',    label: 'Grasas',        icon: '🥑', color: 'var(--accent3)', desc: 'Aceite, frutos secos, palta, mantequilla…' },
+  { key: 'verduras',  label: 'Verduras',      icon: '🥦', color: 'var(--accent4)', desc: 'Brócoli, espinaca, tomate, pepino…' },
+  { key: 'snacks',    label: 'Snacks',        icon: '🍪', color: 'var(--warn)',     desc: 'Galletas, barras, golosinas…' },
+  { key: 'bebidas',   label: 'Bebidas',       icon: '🧃', color: '#a5f3fc',        desc: 'Jugos, batidos, bebidas deportivas…' },
+  { key: 'otros',     label: 'Otros',         icon: '🍽️', color: 'var(--text2)',   desc: 'Salsas, condimentos, suplementos…' },
+];
+const CAT_MAP  = Object.fromEntries(FOOD_CATEGORIES.map(c => [c.key, c]));
+
+const MEALS = [
+  { key: 'desayuno', label: 'Desayuno', icon: '🌅', color: '#fbbf24' },
+  { key: 'almuerzo', label: 'Almuerzo', icon: '☀️',  color: 'var(--accent)' },
+  { key: 'once',     label: 'Once',     icon: '🫖', color: '#c4b5fd' },
+  { key: 'cena',     label: 'Cena',     icon: '🌙', color: 'var(--accent2)' },
+  { key: 'snack',    label: 'Snack',    icon: '🍎', color: 'var(--accent4)' },
+];
+const MEAL_MAP = Object.fromEntries(MEALS.map(m => [m.key, m]));
+const EMPTY_DAY_NUTRI = () => Object.fromEntries(MEALS.map(m => [m.key, []]));
+
 // ── REST TIMER ────────────────────────────────────────────────────────────────
 const TIMER_PRESETS = [60, 90, 120, 180, 240];
 const RestTimer = ({ onClose }) => {
@@ -1046,30 +1069,7 @@ const WorkoutScreen = () => {
 
 // ── SCREEN: NUTRICIÓN ─────────────────────────────────────────────────────────
 
-const FOOD_CATEGORIES = [
-  { key: 'carbos',    label: 'Carbohidratos', icon: '🌾', color: 'var(--accent)',  desc: 'Arroz, pasta, pan, avena, frutas…' },
-  { key: 'proteinas', label: 'Proteínas',     icon: '🥩', color: 'var(--accent2)', desc: 'Pollo, huevo, carne, legumbres…' },
-  { key: 'lacteos',   label: 'Lácteos',       icon: '🥛', color: '#67e8f9',        desc: 'Leche, yogur, queso, requesón…' },
-  { key: 'grasas',    label: 'Grasas',        icon: '🥑', color: 'var(--accent3)', desc: 'Aceite, frutos secos, palta, mantequilla…' },
-  { key: 'verduras',  label: 'Verduras',      icon: '🥦', color: 'var(--accent4)', desc: 'Brócoli, espinaca, tomate, pepino…' },
-  { key: 'snacks',    label: 'Snacks',        icon: '🍪', color: 'var(--warn)',     desc: 'Galletas, barras, golosinas…' },
-  { key: 'bebidas',   label: 'Bebidas',       icon: '🧃', color: '#a5f3fc',        desc: 'Jugos, batidos, bebidas deportivas…' },
-  { key: 'otros',     label: 'Otros',         icon: '🍽️', color: 'var(--text2)',   desc: 'Salsas, condimentos, suplementos…' },
-];
-const CAT_MAP = Object.fromEntries(FOOD_CATEGORIES.map(c => [c.key, c]));
-
-// Meals — what the user logs daily (time-based)
-const MEALS = [
-  { key: 'desayuno', label: 'Desayuno', icon: '🌅', color: '#fbbf24' },
-  { key: 'almuerzo', label: 'Almuerzo', icon: '☀️',  color: 'var(--accent)' },
-  { key: 'once',     label: 'Once',     icon: '🫖', color: '#c4b5fd' },
-  { key: 'cena',     label: 'Cena',     icon: '🌙', color: 'var(--accent2)' },
-  { key: 'snack',    label: 'Snack',    icon: '🍎', color: 'var(--accent4)' },
-];
-const MEAL_MAP = Object.fromEntries(MEALS.map(m => [m.key, m]));
-const EMPTY_DAY_NUTRI = () => Object.fromEntries(MEALS.map(m => [m.key, []]));
-
-// Migrate old data: category-keyed → 'otros' meal bucket
+// Migrate old data: category-keyed → meal bucket
 const migrateNutritionData = (data) => {
   const OLD_CAT_KEYS = ['carbos','proteinas','lacteos','grasas','verduras','snacks','bebidas','otros'];
   const OLD_MEAL_KEYS = ['desayuno','almuerzo','cena']; // from very first version
